@@ -13,16 +13,18 @@ import (
 )
 
 const (
-	baseURL = "https://letterboxd.com"
+	baseURL  = "https://letterboxd.com"
+	maxPages = 50
 )
 
-type Client struct {
+type ScrapeClient struct {
 	client    *http.Client
 	UserAgent string
 	// Config    ClientConfig
 	BaseURL string
 	User    UserService
 	Film    FilmService
+	List    ListService
 	// Location  LocationService
 	// Volume    VolumeService
 }
@@ -32,18 +34,19 @@ type Response struct {
 }
 
 // NewClient Generic new client creation
-func NewClient(httpClient *http.Client) *Client {
+func NewScrapeClient(httpClient *http.Client) *ScrapeClient {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
 
 	userAgent := "letterrestd"
-	c := &Client{client: httpClient, UserAgent: userAgent, BaseURL: baseURL}
+	c := &ScrapeClient{client: httpClient, UserAgent: userAgent, BaseURL: baseURL}
 
 	// c.Location = &LocationServiceOp{client: c}
 	// c.Volume = &VolumeServiceOp{client: c}
 	c.User = &UserServiceOp{client: c}
 	c.Film = &FilmServiceOp{client: c}
+	c.List = &ListServiceOp{client: c}
 	return c
 }
 
@@ -52,7 +55,7 @@ type PageData struct {
 	Pagintion Pagination
 }
 
-func (c *Client) sendRequest(req *http.Request, extractor func(io.Reader) (interface{}, error)) (*PageData, *Response, error) {
+func (c *ScrapeClient) sendRequest(req *http.Request, extractor func(io.Reader) (interface{}, error)) (*PageData, *Response, error) {
 	// req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	// req.Header.Set("Accept", "application/json; charset=utf-8")
 

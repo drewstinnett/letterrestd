@@ -35,7 +35,7 @@ import (
 
 var (
 	cfgFile string
-	client  *letterboxd.Client
+	client  *letterboxd.ScrapeClient
 	ctx     *context.Context
 )
 
@@ -53,7 +53,7 @@ to quickly create a Cobra application.`,
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		client = letterboxd.NewClient(nil)
+		client = letterboxd.NewScrapeClient(nil)
 	},
 }
 

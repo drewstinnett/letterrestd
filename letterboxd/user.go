@@ -14,7 +14,7 @@ type UserService interface {
 }
 
 type UserServiceOp struct {
-	client *Client
+	client *ScrapeClient
 }
 
 func (u *UserServiceOp) ListWatched(ctx *context.Context, userID string) ([]Film, *Response, error) {

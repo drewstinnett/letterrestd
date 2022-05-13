@@ -26,22 +26,25 @@ import (
 	"fmt"
 
 	"github.com/apex/log"
-
+	"github.com/drewstinnett/letterrestd/letterboxd"
 	"github.com/spf13/cobra"
 )
 
-// watchedCmd represents the watched command
-var watchedCmd = &cobra.Command{
-	Use:   "watched USERNAME",
-	Short: "Get a users watched film history",
-	Args:  cobra.ExactArgs(1),
+// listCmd represents the list command
+var listCmd = &cobra.Command{
+	Use:   "list USERNAME LIST-SLUG",
+	Short: "Get information about a given list",
+	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		getExternalIds, err := cmd.Flags().GetBool("get-external-ids")
 		cobra.CheckErr(err)
 		ctx := context.Background()
-		watched, _, err := client.User.ListWatched(&ctx, args[0])
+		films, err := client.List.ListFilms(&ctx, &letterboxd.ListFilmsOpt{
+			User: args[0],
+			Slug: args[1],
+		})
 		cobra.CheckErr(err)
-		for _, film := range watched {
+		for _, film := range films {
 			if getExternalIds {
 				err := client.Film.GetExternalIDs(&ctx, &film)
 				if err != nil {
@@ -55,16 +58,16 @@ var watchedCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(watchedCmd)
+	rootCmd.AddCommand(listCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// watchedCmd.PersistentFlags().String("foo", "", "A help for foo")
-	watchedCmd.PersistentFlags().Bool("get-external-ids", false, "Get external IDs for each film")
+	// listCmd.PersistentFlags().String("foo", "", "A help for foo")
+	listCmd.PersistentFlags().Bool("get-external-ids", false, "Get external IDs for each film")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// watchedCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// listCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

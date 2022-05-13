@@ -22,49 +22,36 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"context"
-	"fmt"
-
-	"github.com/apex/log"
-
+	"github.com/drewstinnett/letterrestd/web"
 	"github.com/spf13/cobra"
 )
 
-// watchedCmd represents the watched command
-var watchedCmd = &cobra.Command{
-	Use:   "watched USERNAME",
-	Short: "Get a users watched film history",
-	Args:  cobra.ExactArgs(1),
+// serverCmd represents the server command
+var serverCmd = &cobra.Command{
+	Use:   "server",
+	Short: "A brief description of your command",
+	Long: `A longer description that spans multiple lines and likely contains examples
+and usage of using your command. For example:
+
+Cobra is a CLI library for Go that empowers applications.
+This application is a tool to generate the needed files
+to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		getExternalIds, err := cmd.Flags().GetBool("get-external-ids")
-		cobra.CheckErr(err)
-		ctx := context.Background()
-		watched, _, err := client.User.ListWatched(&ctx, args[0])
-		cobra.CheckErr(err)
-		for _, film := range watched {
-			if getExternalIds {
-				err := client.Film.GetExternalIDs(&ctx, &film)
-				if err != nil {
-					log.WithError(err).Warn("Failed to get external IDs")
-					continue
-				}
-			}
-			fmt.Printf("%+v\n", film)
-		}
+		r := web.NewRouter(nil)
+		r.Run("localhost:8080")
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(watchedCmd)
+	rootCmd.AddCommand(serverCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// watchedCmd.PersistentFlags().String("foo", "", "A help for foo")
-	watchedCmd.PersistentFlags().Bool("get-external-ids", false, "Get external IDs for each film")
+	// serverCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// watchedCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// serverCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
