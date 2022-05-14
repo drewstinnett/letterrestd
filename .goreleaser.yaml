@@ -39,7 +39,6 @@ brews:
     tap:
       owner: drewstinnett
       name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     description: "API Operations using the Letterboxd website"
     homepage: "https://github.com/drewstinnett/letterrestd"
     license: BSD-2-Clause
