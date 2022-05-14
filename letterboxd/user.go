@@ -87,7 +87,8 @@ func ExtractUserFilms(r io.Reader) (interface{}, *Pagination, error) {
 			if s.HasClass("film-poster") {
 				f := Film{}
 				f.ID = s.AttrOr("data-film-id", "")
-				f.Slug = s.AttrOr("data-film-slug", "")
+				// f.Slug = s.AttrOr("data-film-slug", "")
+				f.Slug = normalizeSlug(s.AttrOr("data-film-slug", ""))
 				f.Target = s.AttrOr("data-target-link", "")
 				// Real film name appears in the alt attribute for the poster
 				s.Find("img.image").Each(func(i int, s *goquery.Selection) {
@@ -99,8 +100,13 @@ func ExtractUserFilms(r io.Reader) (interface{}, *Pagination, error) {
 	})
 	pagination, err := ExtractPaginationWithReader(&pageBuf)
 	if err != nil {
-		log.Warn("Error parsing pagination")
-		return nil, nil, err
+		log.Warn("No pagination data found, assuming it to be a single page")
+		pagination = &Pagination{
+			CurrentPage: 1,
+			NextPage:    1,
+			TotalPages:  1,
+			IsLast:      true,
+		}
 	}
 	return previews, pagination, nil
 }

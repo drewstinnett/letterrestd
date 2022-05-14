@@ -19,10 +19,43 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
-package main
+package cmd
 
-import "github.com/drewstinnett/letterrestd/cli/cmd"
+import (
+	"fmt"
 
-func main() {
-	cmd.Execute()
+	"gopkg.in/yaml.v2"
+
+	"github.com/spf13/cobra"
+)
+
+// urlCmd represents the url command
+var urlCmd = &cobra.Command{
+	Use:   "url",
+	Short: "Parse letterboxd URLs",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		path := args[0]
+		items, err := client.URL.Items(nil, path)
+		cobra.CheckErr(err)
+
+		d, err := yaml.Marshal(items)
+		cobra.CheckErr(err)
+
+		fmt.Println(string(d))
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(urlCmd)
+
+	// Here you will define your flags and configuration settings.
+
+	// Cobra supports Persistent Flags which will work for this command
+	// and all subcommands, e.g.:
+	// urlCmd.PersistentFlags().String("foo", "", "A help for foo")
+
+	// Cobra supports local flags which will only run when this command
+	// is called directly, e.g.:
+	// urlCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

@@ -50,7 +50,7 @@ func (f *FilmographyOpt) Validate() error {
 	if f.Profession == "" {
 		return fmt.Errorf("Profession is required")
 	}
-	profs := getFilmographyProfessions()
+	profs := GetFilmographyProfessions()
 	if !StringInSlice(f.Profession, profs) {
 		return fmt.Errorf("Profession must be one of %v", profs)
 	}
@@ -223,6 +223,6 @@ func extractFilmography(r io.Reader) (interface{}, *Pagination, error) {
 	return previews, nil, nil
 }
 
-func getFilmographyProfessions() []string {
+func GetFilmographyProfessions() []string {
 	return []string{"actor", "director", "producer", "writer"}
 }

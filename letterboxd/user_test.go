@@ -21,3 +21,15 @@ func TestExtractUserFilms(t *testing.T) {
 	require.Greater(t, len(films), 70)
 	require.Equal(t, "Cypress Hill: Insane in the Brain", films[0].Title)
 }
+
+func TestExtractUserFilmsSinglePage(t *testing.T) {
+	f, err := os.Open("testdata/user/watched-films-single.html")
+	defer f.Close()
+	require.NoError(t, err)
+
+	items, _, err := ExtractUserFilms(f)
+	require.NoError(t, err)
+	films := items.([]*Film)
+	require.Equal(t, len(films), 34)
+	require.Equal(t, "Irresistible", films[0].Title)
+}

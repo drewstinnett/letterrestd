@@ -25,6 +25,7 @@ type ScrapeClient struct {
 	User    UserService
 	Film    FilmService
 	List    ListService
+	URL     URLService
 	// Location  LocationService
 	// Volume    VolumeService
 }
@@ -47,6 +48,7 @@ func NewScrapeClient(httpClient *http.Client) *ScrapeClient {
 	c.User = &UserServiceOp{client: c}
 	c.Film = &FilmServiceOp{client: c}
 	c.List = &ListServiceOp{client: c}
+	c.URL = &URLServiceOp{client: c}
 	return c
 }
 
