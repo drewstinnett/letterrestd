@@ -7,15 +7,17 @@ import (
 
 // @BasePath /api/v1
 
-// PingExample godoc
-// @Summary ping example
+// ListExample godoc
+// @Summary Get List Example
 // @Schemes
-// @Description Get film information from the film slug
-// @Tags example
+// @Description Get a list of films
+// @Tags list
 // @Accept json
 // @Produce json
-// @Success 200 {string} Helloworld
-// @Router /films/:id [get]
+// @Param user path string true "Username of the list owner"
+// @Param slug path string true "List slug"
+// @Success 200 {object} APIResponse
+// @Router /lists/{user}/{slug} [get]
 func GetList(c *gin.Context) {
 	user := c.Param("user")
 	slug := c.Param("slug")

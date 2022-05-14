@@ -1,19 +1,48 @@
+definitions:
+  letterboxd.Pagination:
+    properties:
+      current_page:
+        type: integer
+      is_last:
+        type: boolean
+      next_page:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  v1.APIResponse:
+    properties:
+      data: {}
+      pagination:
+        $ref: '#/definitions/letterboxd.Pagination'
+    type: object
 info:
   contact: {}
 paths:
-  /films/:id:
+  /lists/{user}/{slug}:
     get:
       consumes:
       - application/json
-      description: do ping
+      description: Get a list of films
+      parameters:
+      - description: User Name
+        in: path
+        name: user
+        required: true
+        type: string
+      - description: List Slug
+        in: path
+        name: slug
+        required: true
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            type: string
-      summary: ping example
+            $ref: '#/definitions/v1.APIResponse'
+      summary: Get List Example
       tags:
-      - example
+      - list
 swagger: "2.0"

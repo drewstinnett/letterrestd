@@ -16,9 +16,9 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/films/:id": {
+        "/lists/{user}/{slug}": {
             "get": {
-                "description": "do ping",
+                "description": "Get a list of films",
                 "consumes": [
                     "application/json"
                 ],
@@ -26,16 +26,60 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "example"
+                    "list"
                 ],
-                "summary": "ping example",
+                "summary": "Get List Example",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User Name",
+                        "name": "user",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "List Slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/v1.APIResponse"
                         }
                     }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "letterboxd.Pagination": {
+            "type": "object",
+            "properties": {
+                "current_page": {
+                    "type": "integer"
+                },
+                "is_last": {
+                    "type": "boolean"
+                },
+                "next_page": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
+                }
+            }
+        },
+        "v1.APIResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "pagination": {
+                    "$ref": "#/definitions/letterboxd.Pagination"
                 }
             }
         }

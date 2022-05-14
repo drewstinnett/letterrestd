@@ -36,12 +36,15 @@ func NewRouter(r *RouterOpt) *gin.Engine {
 	}
 
 	router := gin.Default()
-	docs.SwaggerInfo.BasePath = "/"
+	docs.SwaggerInfo.BasePath = "/api/v1"
 
 	router.Use(APIClient(sc))
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
-	router.GET("/films/:id", v1.GetFilm)
-	router.GET("/lists/:user/:slug", v1.GetList)
+	v1g := router.Group("/api/v1")
+	{
+		v1g.GET("/films/:id", v1.GetFilm)
+		v1g.GET("/lists/:user/:slug", v1.GetList)
+	}
 
 	return router
 }
