@@ -1,16 +1,18 @@
 package letterboxd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/apex/log"
 )
 
 type ListService interface {
-	ListFilms(*context.Context, *ListFilmsOpt) ([]Film, error)
+	ListFilms(*context.Context, *ListFilmsOpt) ([]*Film, error)
 }
 
 type ListServiceOp struct {
@@ -25,8 +27,8 @@ type ListFilmsOpt struct {
 	LastPage  int    // Last page to fetch. Defaults to FirstPage. Use -1 to fetch all pages
 }
 
-func (l *ListServiceOp) ListFilms(ctx *context.Context, opt *ListFilmsOpt) ([]Film, error) {
-	var films []Film
+func (l *ListServiceOp) ListFilms(ctx *context.Context, opt *ListFilmsOpt) ([]*Film, error) {
+	var films []*Film
 
 	startPage, stopPage, err := normalizeStartStop(opt.FirstPage, opt.LastPage)
 	if err != nil {
@@ -43,7 +45,17 @@ func (l *ListServiceOp) ListFilms(ctx *context.Context, opt *ListFilmsOpt) ([]Fi
 		if err != nil {
 			return nil, err
 		}
-		films = append(films, items.Data.([]Film)...)
+
+		partialFilms := items.Data.([]*Film)
+
+		// This is a bit costly, parallel time?
+		err = l.client.Film.EnhanceFilmList(ctx, &partialFilms)
+		if err != nil {
+			log.WithError(err).Warn("Failed to enhance film list")
+			return nil, err
+		}
+
+		films = append(films, partialFilms...)
 		if items.Pagintion.IsLast {
 			break
 		}
@@ -64,11 +76,13 @@ func (l *ListServiceOp) ListFilms(ctx *context.Context, opt *ListFilmsOpt) ([]Fi
 	return films, nil
 }
 
-func extractListFilms(r io.Reader) (interface{}, error) {
-	var previews []Film
-	doc, err := goquery.NewDocumentFromReader(r)
+func extractListFilms(r io.Reader) (interface{}, *Pagination, error) {
+	var previews []*Film
+	var pageBuf bytes.Buffer
+	tee := io.TeeReader(r, &pageBuf)
+	doc, err := goquery.NewDocumentFromReader(tee)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	doc.Find("li.poster-container").Each(func(i int, s *goquery.Selection) {
 		s.Find("div").Each(func(i int, s *goquery.Selection) {
@@ -81,9 +95,14 @@ func extractListFilms(r io.Reader) (interface{}, error) {
 				s.Find("img.image").Each(func(i int, s *goquery.Selection) {
 					f.Title = s.AttrOr("alt", "")
 				})
-				previews = append(previews, f)
+				previews = append(previews, &f)
 			}
 		})
 	})
-	return previews, nil
+	pagination, err := ExtractPaginationWithReader(&pageBuf)
+	if err != nil {
+		log.Warn("Error parsing pagination")
+		return nil, nil, err
+	}
+	return previews, pagination, nil
 }

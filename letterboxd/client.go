@@ -55,13 +55,7 @@ type PageData struct {
 	Pagintion Pagination
 }
 
-func (c *ScrapeClient) sendRequest(req *http.Request, extractor func(io.Reader) (interface{}, error)) (*PageData, *Response, error) {
-	// req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	// req.Header.Set("Accept", "application/json; charset=utf-8")
-
-	// command, _ := http2curl.GetCurlCommand(req)
-	// log.Debugln(command)
-
+func (c *ScrapeClient) sendRequest(req *http.Request, extractor func(io.Reader) (interface{}, *Pagination, error)) (*PageData, *Response, error) {
 	res, err := c.client.Do(req)
 	req.Close = true
 	if err != nil {
@@ -93,20 +87,24 @@ func (c *ScrapeClient) sendRequest(req *http.Request, extractor func(io.Reader) 
 	if err != nil {
 		return nil, nil, err
 	}
-	items, err := extractor(bytes.NewReader(b))
+	items, pagination, err := extractor(bytes.NewReader(b))
 	if err != nil {
 		log.Warn("Error parsing response")
 		return nil, nil, err
 	}
-	pagination, err := ExtractPaginationWithReader(bytes.NewReader(b))
-	if err != nil {
-		log.Warn("Error parsing pagination")
-		return nil, nil, err
-	}
+	/*
+		pagination, err := ExtractPaginationWithReader(bytes.NewReader(b))
+		if err != nil {
+			log.Warn("Error parsing pagination")
+			return nil, nil, err
+		}
+	*/
 	r := &Response{res}
 	d := &PageData{
-		Data:      items,
-		Pagintion: *pagination,
+		Data: items,
+	}
+	if pagination != nil {
+		d.Pagintion = *pagination
 	}
 
 	return d, r, nil

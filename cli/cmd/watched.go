@@ -36,21 +36,17 @@ var watchedCmd = &cobra.Command{
 	Short: "Get a users watched film history",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		getExternalIds, err := cmd.Flags().GetBool("get-external-ids")
-		cobra.CheckErr(err)
+		// getExternalIds, err := cmd.Flags().GetBool("get-external-ids")
+		// cobra.CheckErr(err)
 		ctx := context.Background()
 		watched, _, err := client.User.ListWatched(&ctx, args[0])
 		cobra.CheckErr(err)
 		for _, film := range watched {
-			if getExternalIds {
-				err := client.Film.GetExternalIDs(&ctx, &film)
-				if err != nil {
-					log.WithError(err).Warn("Failed to get external IDs")
-					continue
-				}
-			}
 			fmt.Printf("%+v\n", film)
 		}
+		log.WithFields(log.Fields{
+			"count": len(watched),
+		}).Info("Watched movies")
 	},
 }
 
@@ -62,7 +58,7 @@ func init() {
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
 	// watchedCmd.PersistentFlags().String("foo", "", "A help for foo")
-	watchedCmd.PersistentFlags().Bool("get-external-ids", false, "Get external IDs for each film")
+	// watchedCmd.PersistentFlags().Bool("get-external-ids", false, "Get external IDs for each film")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:

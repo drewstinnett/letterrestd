@@ -25,6 +25,14 @@ func TestListFilms(t *testing.T) {
 		if strings.Contains(r.URL.Path, "/dave/list/official-top-250-narrative-feature-films/page/") {
 			pageNo := strings.Split(r.URL.Path, "/")[5]
 			r, err := os.Open(fmt.Sprintf("testdata/list/lists-page-%v.html", pageNo))
+			defer r.Close()
+			require.NoError(t, err)
+			_, err = io.Copy(w, r)
+			require.NoError(t, err)
+			return
+		} else if strings.HasPrefix(r.URL.Path, "/film/") {
+			r, err := os.Open(fmt.Sprintf("testdata/film/sweetback.html"))
+			defer r.Close()
 			require.NoError(t, err)
 			_, err = io.Copy(w, r)
 			require.NoError(t, err)

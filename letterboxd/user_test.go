@@ -12,8 +12,8 @@ func TestExtractUserFilms(t *testing.T) {
 	defer f.Close()
 	require.NoError(t, err)
 
-	items, err := ExtractUserFilms(f)
-	films := items.([]Film)
+	items, _, err := ExtractUserFilms(f)
+	films := items.([]*Film)
 	// films = ret.([]FilmPreview)
 
 	// log.Fatal(films)

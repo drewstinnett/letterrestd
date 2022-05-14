@@ -1,24 +1,54 @@
 package letterboxd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/apex/log"
 )
 
 type UserService interface {
-	ListWatched(ctx *context.Context, userID string) ([]Film, *Response, error)
+	ListWatched(ctx *context.Context, userID string) ([]*Film, *Response, error)
+	WatchList(ctx *context.Context, userID string) ([]*Film, *Response, error)
 }
 
 type UserServiceOp struct {
 	client *ScrapeClient
 }
 
-func (u *UserServiceOp) ListWatched(ctx *context.Context, userID string) ([]Film, *Response, error) {
-	var previews []Film
+func (u *UserServiceOp) WatchList(ctx *context.Context, userID string) ([]*Film, *Response, error) {
+	var previews []*Film
+	page := 1
+	for {
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/%s/watchlist/page/%d", u.client.BaseURL, userID, page), nil)
+		if err != nil {
+			return nil, nil, err
+		}
+		// var previews []FilmPreview
+		items, resp, err := u.client.sendRequest(req, ExtractUserFilms)
+		if err != nil {
+			return nil, resp, err
+		}
+		partialFilms := items.Data.([]*Film)
+		err = u.client.Film.EnhanceFilmList(ctx, &partialFilms)
+		if err != nil {
+			log.WithError(err).Warn("Failed to enhance film list")
+		}
+		previews = append(previews, partialFilms...)
+		if items.Pagintion.IsLast {
+			break
+		}
+		page++
+	}
+	return previews, nil, nil
+}
+
+func (u *UserServiceOp) ListWatched(ctx *context.Context, userID string) ([]*Film, *Response, error) {
+	var previews []*Film
 	page := 1
 	for {
 		req, err := http.NewRequest("GET", fmt.Sprintf("%s/%s/films/page/%d", u.client.BaseURL, userID, page), nil)
@@ -30,7 +60,12 @@ func (u *UserServiceOp) ListWatched(ctx *context.Context, userID string) ([]Film
 		if err != nil {
 			return nil, resp, err
 		}
-		previews = append(previews, items.Data.([]Film)...)
+		partialFilms := items.Data.([]*Film)
+		err = u.client.Film.EnhanceFilmList(ctx, &partialFilms)
+		if err != nil {
+			log.WithError(err).Warn("Failed to enhance film list")
+		}
+		previews = append(previews, partialFilms...)
 		if items.Pagintion.IsLast {
 			break
 		}
@@ -39,11 +74,13 @@ func (u *UserServiceOp) ListWatched(ctx *context.Context, userID string) ([]Film
 	return previews, nil, nil
 }
 
-func ExtractUserFilms(r io.Reader) (interface{}, error) {
-	var previews []Film
-	doc, err := goquery.NewDocumentFromReader(r)
+func ExtractUserFilms(r io.Reader) (interface{}, *Pagination, error) {
+	var previews []*Film
+	var pageBuf bytes.Buffer
+	tee := io.TeeReader(r, &pageBuf)
+	doc, err := goquery.NewDocumentFromReader(tee)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	doc.Find("li.poster-container").Each(func(i int, s *goquery.Selection) {
 		s.Find("div").Each(func(i int, s *goquery.Selection) {
@@ -56,12 +93,14 @@ func ExtractUserFilms(r io.Reader) (interface{}, error) {
 				s.Find("img.image").Each(func(i int, s *goquery.Selection) {
 					f.Title = s.AttrOr("alt", "")
 				})
-				previews = append(previews, f)
+				previews = append(previews, &f)
 			}
 		})
 	})
-	// v = &previews
-	// log.Infof("%+v", v)
-	// log.Infof("%+v", reflect.TypeOf(v))
-	return previews, nil
+	pagination, err := ExtractPaginationWithReader(&pageBuf)
+	if err != nil {
+		log.Warn("Error parsing pagination")
+		return nil, nil, err
+	}
+	return previews, pagination, nil
 }

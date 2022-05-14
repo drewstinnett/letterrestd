@@ -29,8 +29,13 @@ func GetList(c *gin.Context) {
 		c.JSON(500, gin.H{
 			"message": err.Error(),
 		})
+		return
 	}
-	c.JSON(200, APIResponse{
+	//var data []*letterboxd.Film
+	//for _, film := range films {
+	//data = append(data, film)
+	//}
+	c.IndentedJSON(200, APIResponse{
 		Data: films,
 	})
 }

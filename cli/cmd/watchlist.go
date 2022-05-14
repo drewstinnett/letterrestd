@@ -26,48 +26,37 @@ import (
 	"fmt"
 
 	"github.com/apex/log"
-	"github.com/drewstinnett/letterrestd/letterboxd"
 	"github.com/spf13/cobra"
 )
 
-// listCmd represents the list command
-var listCmd = &cobra.Command{
-	Use:   "list USERNAME LIST-SLUG",
-	Short: "Get information about a given list",
-	Args:  cobra.ExactArgs(2),
+// watchlistCmd represents the watchlist command
+var watchlistCmd = &cobra.Command{
+	Use:   "watchlist",
+	Short: "Show a users watchlist",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		getExternalIds, err := cmd.Flags().GetBool("get-external-ids")
-		cobra.CheckErr(err)
 		ctx := context.Background()
-		films, err := client.List.ListFilms(&ctx, &letterboxd.ListFilmsOpt{
-			User: args[0],
-			Slug: args[1],
-		})
+		items, _, err := client.User.WatchList(&ctx, args[0])
 		cobra.CheckErr(err)
-		for _, film := range films {
-			if getExternalIds {
-				err := client.Film.GetExternalIDs(&ctx, film)
-				if err != nil {
-					log.WithError(err).Warn("Failed to get external IDs")
-					continue
-				}
-			}
+		for _, film := range items {
 			fmt.Printf("%+v\n", film)
 		}
+		log.WithFields(log.Fields{
+			"count": len(items),
+		}).Info("Watchlist movies")
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(watchlistCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// listCmd.PersistentFlags().String("foo", "", "A help for foo")
-	listCmd.PersistentFlags().Bool("get-external-ids", false, "Get external IDs for each film")
+	// watchlistCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// listCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// watchlistCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
