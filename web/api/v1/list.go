@@ -5,6 +5,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// @BasePath /api/v1
+
+// PingExample godoc
+// @Summary ping example
+// @Schemes
+// @Description Get film information from the film slug
+// @Tags example
+// @Accept json
+// @Produce json
+// @Success 200 {string} Helloworld
+// @Router /films/:id [get]
 func GetList(c *gin.Context) {
 	user := c.Param("user")
 	slug := c.Param("slug")
@@ -20,10 +31,6 @@ func GetList(c *gin.Context) {
 		})
 		return
 	}
-	//var data []*letterboxd.Film
-	//for _, film := range films {
-	//data = append(data, film)
-	//}
 	c.IndentedJSON(200, APIResponse{
 		Data: films,
 	})

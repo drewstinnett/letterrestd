@@ -3,9 +3,12 @@ package web
 import (
 	"net/http"
 
+	docs "github.com/drewstinnett/letterrestd/docs"
 	"github.com/drewstinnett/letterrestd/letterboxd"
 	v1 "github.com/drewstinnett/letterrestd/web/api/v1"
 	"github.com/gin-gonic/gin"
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 type RouterOpt struct {
@@ -33,9 +36,13 @@ func NewRouter(r *RouterOpt) *gin.Engine {
 	}
 
 	router := gin.Default()
+	docs.SwaggerInfo.BasePath = "/"
+
 	router.Use(APIClient(sc))
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 	router.GET("/films/:id", v1.GetFilm)
 	router.GET("/lists/:user/:slug", v1.GetList)
+
 	return router
 }
 
