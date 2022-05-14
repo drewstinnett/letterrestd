@@ -1,0 +1,45 @@
+---
+builds:
+  - env:
+      - CGO_ENABLED=0
+    main: ./cli/
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    ldflags:
+      - '-s -w'
+      - -X github.com/drewstinnett/letterrestd/cli/cmd.date={{ .CommitTimestamp }}
+      - -X github.com/drewstinnett/letterrestd/cli/cmd.version={{ .Tag }}
+      - -X github.com/drewstinnett/letterrestd/cli/cmd.commit={{ .ShortCommit }}
+    flags:
+      - -trimpath
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: darwin
+        goarch: '386'
+    binary: 'letterrestd'
+archives:
+  - format: tar.gz
+    name_template: 'letterrestd-{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    replacements:
+      darwin: macOS
+checksum:
+  name_template: 'letterrestd-{{ .Version }}_SHA256SUMS'
+  algorithm: sha256
+snapshot:
+  name_template: "{{ .Tag }}-snapshot"
+changelog:
+  skip: true
+brews:
+  - name: 'letterrestd'
+    tap:
+      owner: drewstinnett
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    description: "API Operations using the Letterboxd website"
+    homepage: "https://github.com/drewstinnett/letterrestd"
+    license: BSD-2-Clause
