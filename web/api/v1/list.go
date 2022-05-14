@@ -10,7 +10,7 @@ import (
 // ListExample godoc
 // @Summary Get List Example
 // @Schemes
-// @Description Get a list of films
+// @Description Get a list of films from a user's list
 // @Tags list
 // @Accept json
 // @Produce json

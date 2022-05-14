@@ -21,8 +21,8 @@ func TestExtractFilmExternalIDs(t *testing.T) {
 	ids, err := ExtractFilmExternalIDs(f)
 	require.NoError(t, err)
 	require.NotNil(t, ids)
-	require.Equal(t, "tt0067810", ids.IMDBID)
-	require.Equal(t, "5822", ids.TMDBID)
+	require.Equal(t, "tt0067810", ids.IMDB)
+	require.Equal(t, "5822", ids.TMDB)
 	// films := items.([]Film)
 }
 
@@ -51,8 +51,8 @@ func TestExtractFilmFromFilmPage(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, film)
 	require.NotNil(t, film.ExternalIDs)
-	require.Equal(t, "tt0067810", film.ExternalIDs.IMDBID)
-	require.Equal(t, "5822", film.ExternalIDs.TMDBID)
+	require.Equal(t, "tt0067810", film.ExternalIDs.IMDB)
+	require.Equal(t, "5822", film.ExternalIDs.TMDB)
 	require.Equal(t, "Sweet Sweetback's Baadasssss Song", film.Title)
 }
 

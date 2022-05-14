@@ -13,8 +13,8 @@ import (
 )
 
 type ExternalFilmIDs struct {
-	IMDBID string `json:"imdb_id"`
-	TMDBID string `json:"tmdb_id"`
+	IMDB string `json:"imdb"`
+	TMDB string `json:"tmdb"`
 }
 
 type Film struct {
@@ -153,11 +153,10 @@ func ExtractFilmExternalIDs(r io.Reader) (*ExternalFilmIDs, error) {
 	}
 	doc.Find("a").Each(func(i int, s *goquery.Selection) {
 		if val, ok := s.Attr("data-track-action"); ok && val == "IMDb" {
-			ids.IMDBID = extractIDFromURL(s.AttrOr("href", ""))
+			ids.IMDB = extractIDFromURL(s.AttrOr("href", ""))
 		}
 		if val, ok := s.Attr("data-track-action"); ok && val == "TMDb" {
-			ids.TMDBID = extractIDFromURL(s.AttrOr("href", ""))
-			// ids.TMDBID = s.AttrOr("href", "")
+			ids.TMDB = extractIDFromURL(s.AttrOr("href", ""))
 		}
 	})
 
@@ -180,10 +179,10 @@ func extractFilmFromFilmPage(r io.Reader) (*Film, error) {
 	})
 	doc.Find("a").Each(func(i int, s *goquery.Selection) {
 		if val, ok := s.Attr("data-track-action"); ok && val == "IMDb" {
-			f.ExternalIDs.IMDBID = extractIDFromURL(s.AttrOr("href", ""))
+			f.ExternalIDs.IMDB = extractIDFromURL(s.AttrOr("href", ""))
 		}
 		if val, ok := s.Attr("data-track-action"); ok && val == "TMDb" {
-			f.ExternalIDs.TMDBID = extractIDFromURL(s.AttrOr("href", ""))
+			f.ExternalIDs.TMDB = extractIDFromURL(s.AttrOr("href", ""))
 			// ids.TMDBID = s.AttrOr("href", "")
 		}
 	})
