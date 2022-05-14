@@ -22,45 +22,32 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"context"
-	"fmt"
-
-	"github.com/apex/log"
+	"log"
 
 	"github.com/spf13/cobra"
 )
 
-// watchedCmd represents the watched command
-var watchedCmd = &cobra.Command{
-	Use:   "watched USERNAME",
-	Short: "Get a users watched film history",
-	Args:  cobra.ExactArgs(1),
+// scrapeCmd represents the scrape command
+var scrapeCmd = &cobra.Command{
+	Use:     "scrape",
+	Short:   "Use the scrape client to query letterboxd.com",
+	Args:    cobra.ExactArgs(1),
+	Aliases: []string{"scraper", "s"},
 	Run: func(cmd *cobra.Command, args []string) {
-		// getExternalIds, err := cmd.Flags().GetBool("get-external-ids")
-		// cobra.CheckErr(err)
-		ctx := context.Background()
-		watched, _, err := client.User.ListWatched(&ctx, args[0])
-		cobra.CheckErr(err)
-		for _, film := range watched {
-			fmt.Printf("%+v\n", film)
-		}
-		log.WithFields(log.Fields{
-			"count": len(watched),
-		}).Info("Watched movies")
+		log.Fatal("Use a subcommand (-h for those)")
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(watchedCmd)
+	rootCmd.AddCommand(scrapeCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// watchedCmd.PersistentFlags().String("foo", "", "A help for foo")
-	// watchedCmd.PersistentFlags().Bool("get-external-ids", false, "Get external IDs for each film")
+	// scrapeCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// watchedCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// scrapeCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

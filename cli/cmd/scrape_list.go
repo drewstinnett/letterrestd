@@ -25,9 +25,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/apex/log"
 	"github.com/drewstinnett/letterrestd/letterboxd"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 // listCmd represents the list command
@@ -36,36 +36,26 @@ var listCmd = &cobra.Command{
 	Short: "Get information about a given list",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		getExternalIds, err := cmd.Flags().GetBool("get-external-ids")
-		cobra.CheckErr(err)
 		ctx := context.Background()
 		films, err := client.List.ListFilms(&ctx, &letterboxd.ListFilmsOpt{
 			User: args[0],
 			Slug: args[1],
 		})
 		cobra.CheckErr(err)
-		for _, film := range films {
-			if getExternalIds {
-				err := client.Film.GetExternalIDs(&ctx, film)
-				if err != nil {
-					log.WithError(err).Warn("Failed to get external IDs")
-					continue
-				}
-			}
-			fmt.Printf("%+v\n", film)
-		}
+		d, err := yaml.Marshal(films)
+		cobra.CheckErr(err)
+		fmt.Println(string(d))
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(listCmd)
+	scrapeCmd.AddCommand(listCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
 	// listCmd.PersistentFlags().String("foo", "", "A help for foo")
-	listCmd.PersistentFlags().Bool("get-external-ids", false, "Get external IDs for each film")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:

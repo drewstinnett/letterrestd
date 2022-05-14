@@ -26,6 +26,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/cli"
 	"github.com/drewstinnett/letterrestd/letterboxd"
 	"github.com/spf13/cobra"
 
@@ -37,16 +39,21 @@ var (
 	cfgFile string
 	client  *letterboxd.ScrapeClient
 	ctx     *context.Context
+	Verbose bool
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "letterboxd-scraper",
-	Short: "Scrape CLI for Letterboxd",
+	Use:   "letterrestd",
+	Short: "CLI for interacting with Letterboxd",
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		if Verbose {
+			log.SetLevel(log.DebugLevel)
+		}
+		log.SetHandler(cli.Default)
 		client = letterboxd.NewScrapeClient(nil)
 	},
 }
@@ -68,7 +75,7 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.Flags().BoolVarP(&Verbose, "verbose", "v", false, "Verbose logging")
 }
 
 // initConfig reads in config file and ENV variables if set.

@@ -22,40 +22,42 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"context"
 	"fmt"
 
-	"gopkg.in/yaml.v2"
-
+	"github.com/apex/log"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
-// urlCmd represents the url command
-var urlCmd = &cobra.Command{
-	Use:   "url",
-	Short: "Parse letterboxd URLs",
+// watchlistCmd represents the watchlist command
+var watchlistCmd = &cobra.Command{
+	Use:   "watchlist",
+	Short: "Show a users watchlist",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		path := args[0]
-		items, err := client.URL.Items(nil, path)
+		ctx := context.Background()
+		items, _, err := client.User.WatchList(&ctx, args[0])
 		cobra.CheckErr(err)
-
 		d, err := yaml.Marshal(items)
 		cobra.CheckErr(err)
-
 		fmt.Println(string(d))
+		log.WithFields(log.Fields{
+			"count": len(items),
+		}).Info("Watchlist movies")
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(urlCmd)
+	scrapeCmd.AddCommand(watchlistCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// urlCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// watchlistCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// urlCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// watchlistCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

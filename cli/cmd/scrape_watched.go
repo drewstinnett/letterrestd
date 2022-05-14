@@ -22,32 +22,46 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"github.com/drewstinnett/letterrestd/web"
+	"context"
+	"fmt"
+
+	"github.com/apex/log"
+	"gopkg.in/yaml.v2"
+
 	"github.com/spf13/cobra"
 )
 
-// serverCmd represents the server command
-var serverCmd = &cobra.Command{
-	Use:   "server",
-	Short: "Run a RESTful server to interact with Letterboxd",
+// watchedCmd represents the watched command
+var watchedCmd = &cobra.Command{
+	Use:   "watched USERNAME",
+	Short: "Get a users watched film history",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		r := web.NewRouter(nil)
-		listen, err := cmd.Flags().GetString("listen")
+		// getExternalIds, err := cmd.Flags().GetBool("get-external-ids")
+		// cobra.CheckErr(err)
+		ctx := context.Background()
+		watched, _, err := client.User.ListWatched(&ctx, args[0])
 		cobra.CheckErr(err)
-		r.Run(listen)
+		d, err := yaml.Marshal(watched)
+		cobra.CheckErr(err)
+		fmt.Println(string(d))
+		log.WithFields(log.Fields{
+			"count": len(watched),
+		}).Info("Watched movies")
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(serverCmd)
+	scrapeCmd.AddCommand(watchedCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	serverCmd.PersistentFlags().StringP("listen", "l", "localhost:8080", "Address and port to listen on")
+	// watchedCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// watchedCmd.PersistentFlags().Bool("get-external-ids", false, "Get external IDs for each film")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// serverCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// watchedCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

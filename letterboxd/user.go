@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/apex/log"
@@ -14,10 +16,70 @@ import (
 type UserService interface {
 	ListWatched(ctx *context.Context, userID string) ([]*Film, *Response, error)
 	WatchList(ctx *context.Context, userID string) ([]*Film, *Response, error)
+	Exists(*context.Context, string) (bool, error)
+	Profile(ctx *context.Context, userID string) (*User, *Response, error)
+}
+
+type User struct {
+	Username         string `json:"username"`
+	Bio              string `json:"bio"`
+	WatchedFilmCount int    `json:"watched_film_count"`
 }
 
 type UserServiceOp struct {
 	client *ScrapeClient
+}
+
+func ExtractUser(r io.Reader) (interface{}, *Pagination, error) {
+	doc, err := goquery.NewDocumentFromReader(r)
+	if err != nil {
+		return nil, nil, err
+	}
+	user := &User{}
+	doc.Find("section#person-bio").Each(func(i int, s *goquery.Selection) {
+		s.Find("div.collapsible-text").Each(func(i int, s *goquery.Selection) {
+			user.Bio = strings.TrimSpace(s.Text())
+		})
+	})
+	doc.Find("section.js-profile-header").Each(func(i int, s *goquery.Selection) {
+		user.Username = s.AttrOr("data-person", "")
+	})
+	doc.Find("div.profile-stats").Each(func(i int, s *goquery.Selection) {
+		s.Find("a").Each(func(i int, s *goquery.Selection) {
+			if s.AttrOr("href", "") == fmt.Sprintf("/%v/films/", user.Username) {
+				s.Find("span.value").Each(func(i int, s *goquery.Selection) {
+					countS := strings.TrimSpace(s.Text())
+					countS = strings.Replace(countS, ",", "", -1)
+					count, err := strconv.Atoi(countS)
+					if err != nil {
+						log.WithError(err).Warn("Failed to parse film count")
+					}
+					user.WatchedFilmCount = count
+				})
+				// user.WatchedFilmCount, _ = s.AttrOr("data-count", "").Atoi()
+			}
+		})
+	})
+	if user.Username == "" {
+		return nil, nil, fmt.Errorf("Failed to extract user")
+	}
+	return user, nil, nil
+}
+
+func (u *UserServiceOp) Profile(ctx *context.Context, userID string) (*User, *Response, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/%s", u.client.BaseURL, userID), nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	user, resp, err := u.client.sendRequest(req, ExtractUser)
+	if err != nil {
+		return nil, resp, err
+	}
+	return user.Data.(*User), resp, nil
+}
+
+func (u *UserServiceOp) Exists(ctx *context.Context, userID string) (bool, error) {
+	return false, nil
 }
 
 func (u *UserServiceOp) WatchList(ctx *context.Context, userID string) ([]*Film, *Response, error) {

@@ -101,8 +101,13 @@ func extractListFilms(r io.Reader) (interface{}, *Pagination, error) {
 	})
 	pagination, err := ExtractPaginationWithReader(&pageBuf)
 	if err != nil {
-		log.Warn("Error parsing pagination")
-		return nil, nil, err
+		log.Debug("No pagination data found")
+		pagination = &Pagination{
+			CurrentPage: 1,
+			NextPage:    1,
+			TotalPages:  1,
+			IsLast:      true,
+		}
 	}
 	return previews, pagination, nil
 }
