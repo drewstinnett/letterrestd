@@ -16,9 +16,41 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/films/{slug}": {
+            "get": {
+                "description": "Get a film from a film slug",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "films"
+                ],
+                "summary": "Get List Example",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Film slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/lists/{user}/{slug}": {
             "get": {
-                "description": "Get a list of films",
+                "description": "Get a list of films from a user's list",
                 "consumes": [
                     "application/json"
                 ],
@@ -32,14 +64,14 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "User Name",
+                        "description": "Username of the list owner",
                         "name": "user",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "List Slug",
+                        "description": "List slug",
                         "name": "slug",
                         "in": "path",
                         "required": true

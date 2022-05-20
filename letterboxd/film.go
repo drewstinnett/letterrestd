@@ -30,6 +30,7 @@ type FilmService interface {
 	// GetFilmWithPath(*context.Context, string) (*Film, error)
 	EnhanceFilmList(*context.Context, *[]*Film) error
 	Filmography(*context.Context, *FilmographyOpt) ([]*Film, error)
+	Get(*context.Context, string) (*Film, error)
 }
 
 type FilmServiceOp struct {
@@ -55,6 +56,18 @@ func (f *FilmographyOpt) Validate() error {
 		return fmt.Errorf("Profession must be one of %v", profs)
 	}
 	return nil
+}
+
+func (f *FilmServiceOp) Get(ctx *context.Context, slug string) (*Film, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/film/%s", f.client.BaseURL, slug), nil)
+	if err != nil {
+		return nil, err
+	}
+	item, _, err := f.client.sendRequest(req, extractFilmFromFilmPage)
+	if err != nil {
+		return nil, err
+	}
+	return item.Data.(*Film), nil
 }
 
 func (f *FilmServiceOp) Filmography(ctx *context.Context, opt *FilmographyOpt) ([]*Film, error) {
@@ -163,19 +176,34 @@ func ExtractFilmExternalIDs(r io.Reader) (*ExternalFilmIDs, error) {
 	return ids, nil
 }
 
-func extractFilmFromFilmPage(r io.Reader) (*Film, error) {
+func extractFilmFromFilmPage(r io.Reader) (interface{}, *Pagination, error) {
 	f := &Film{
 		ExternalIDs: &ExternalFilmIDs{},
 	}
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	doc.Find("meta").Each(func(i int, s *goquery.Selection) {
 		if val, ok := s.Attr("property"); ok && val == "og:title" {
 			fullTitle := s.AttrOr("content", "")
 			f.Title = fullTitle[0 : len(fullTitle)-7]
 		}
+	})
+	doc.Find("div").Each(func(i int, s *goquery.Selection) {
+		s.Find("div").Each(func(i int, s *goquery.Selection) {
+			if s.HasClass("poster film-poster") {
+				if f.Slug == "" {
+					f.Slug = normalizeSlug(s.AttrOr("data-film-slug", ""))
+				}
+				if f.Target == "" {
+					f.Target = s.AttrOr("data-target-link", "")
+				}
+				if f.ID == "" {
+					f.ID = s.AttrOr("data-film-id", "")
+				}
+			}
+		})
 	})
 	doc.Find("a").Each(func(i int, s *goquery.Selection) {
 		if val, ok := s.Attr("data-track-action"); ok && val == "IMDb" {
@@ -186,7 +214,7 @@ func extractFilmFromFilmPage(r io.Reader) (*Film, error) {
 			// ids.TMDBID = s.AttrOr("href", "")
 		}
 	})
-	return f, nil
+	return f, nil, nil
 }
 
 func extractIDFromURL(url string) string {

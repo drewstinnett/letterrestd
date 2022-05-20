@@ -47,13 +47,18 @@ func TestExtractFilmFromFilmPage(t *testing.T) {
 	f, err := os.Open("testdata/film/sweetback.html")
 	defer f.Close()
 	require.NoError(t, err)
-	film, err := extractFilmFromFilmPage(f)
+	i, pagination, err := extractFilmFromFilmPage(f)
+	film := i.(*Film)
 	require.NoError(t, err)
+	require.Nil(t, pagination)
 	require.NotNil(t, film)
 	require.NotNil(t, film.ExternalIDs)
 	require.Equal(t, "tt0067810", film.ExternalIDs.IMDB)
 	require.Equal(t, "5822", film.ExternalIDs.TMDB)
 	require.Equal(t, "Sweet Sweetback's Baadasssss Song", film.Title)
+	require.Equal(t, "sweet-sweetbacks-baadasssss-song", film.Slug)
+	require.Equal(t, "/film/sweet-sweetbacks-baadasssss-song/", film.Target)
+	require.Equal(t, "48640", film.ID)
 }
 
 func TestEnhanceFilmList(t *testing.T) {

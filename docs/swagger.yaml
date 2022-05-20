@@ -19,18 +19,39 @@ definitions:
 info:
   contact: {}
 paths:
+  /films/{slug}:
+    get:
+      consumes:
+      - application/json
+      description: Get a film from a film slug
+      parameters:
+      - description: Film slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.APIResponse'
+      summary: Get List Example
+      tags:
+      - films
   /lists/{user}/{slug}:
     get:
       consumes:
       - application/json
-      description: Get a list of films
+      description: Get a list of films from a user's list
       parameters:
-      - description: User Name
+      - description: Username of the list owner
         in: path
         name: user
         required: true
         type: string
-      - description: List Slug
+      - description: List slug
         in: path
         name: slug
         required: true

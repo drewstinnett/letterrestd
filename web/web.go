@@ -42,7 +42,7 @@ func NewRouter(r *RouterOpt) *gin.Engine {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 	v1g := router.Group("/api/v1")
 	{
-		v1g.GET("/films/:id", v1.GetFilm)
+		v1g.GET("/films/:slug", v1.GetFilm)
 		v1g.GET("/lists/:user/:slug", v1.GetList)
 	}
 

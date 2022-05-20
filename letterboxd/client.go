@@ -71,7 +71,7 @@ func (c *ScrapeClient) sendRequest(req *http.Request, extractor func(io.Reader) 
 	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusBadRequest {
 		var errRes ErrorResponse
 		b, _ := ioutil.ReadAll(res.Body)
-		log.Warn(string(b))
+		log.Debug(string(b))
 		if err = json.NewDecoder(res.Body).Decode(&errRes); err == nil {
 			return nil, nil, errors.New(errRes.Message)
 		}
