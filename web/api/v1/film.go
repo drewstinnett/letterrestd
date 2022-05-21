@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"github.com/apex/log"
 	"github.com/drewstinnett/letterrestd/letterboxd"
 	"github.com/gin-gonic/gin"
 )
@@ -20,6 +21,9 @@ func GetFilm(c *gin.Context) {
 	sc := c.MustGet("client").(letterboxd.ScrapeClient)
 	film, err := sc.Film.Get(nil, slug)
 	if err != nil {
+		log.WithFields(log.Fields{
+			"slug": slug,
+		}).WithError(err).Warn("Error getting film")
 		c.JSON(404, gin.H{
 			"message": err.Error(),
 		})

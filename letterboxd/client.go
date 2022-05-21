@@ -79,6 +79,10 @@ func (c *ScrapeClient) sendRequest(req *http.Request, extractor func(io.Reader) 
 		if res.StatusCode == http.StatusTooManyRequests {
 			return nil, nil, fmt.Errorf("too many requests.  Check rate limit and make sure the userAgent is set right")
 		} else if res.StatusCode == http.StatusNotFound {
+			log.WithFields(log.Fields{
+				"status": res.StatusCode,
+				"url":    req.URL.String(),
+			}).Warn("Not found")
 			return nil, nil, fmt.Errorf("that entry was not found, are you sure it exists?")
 		} else {
 			return nil, nil, fmt.Errorf("error, status code: %d", res.StatusCode)

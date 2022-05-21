@@ -21,7 +21,6 @@ import (
 func TestListFilms(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Warnf("%v", r.URL.Path)
 		if strings.Contains(r.URL.Path, "/dave/list/official-top-250-narrative-feature-films/page/") {
 			pageNo := strings.Split(r.URL.Path, "/")[5]
 			r, err := os.Open(fmt.Sprintf("testdata/list/lists-page-%v.html", pageNo))
@@ -69,7 +68,6 @@ func TestListFilms(t *testing.T) {
 func TestListFilmsSinglePage(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Warnf("%v", r.URL.Path)
 		if strings.Contains(r.URL.Path, "/mondodrew/list/2022-movie-church") {
 			r, err := os.Open("testdata/list/lists-single-page.html")
 			defer r.Close()

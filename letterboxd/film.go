@@ -211,7 +211,6 @@ func extractFilmFromFilmPage(r io.Reader) (interface{}, *Pagination, error) {
 		}
 		if val, ok := s.Attr("data-track-action"); ok && val == "TMDb" {
 			f.ExternalIDs.TMDB = extractIDFromURL(s.AttrOr("href", ""))
-			// ids.TMDBID = s.AttrOr("href", "")
 		}
 	})
 	return f, nil, nil
