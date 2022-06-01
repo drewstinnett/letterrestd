@@ -17,7 +17,11 @@ This is mainy useful for testing out the scrape capabilities. Use `letterrestd
 scrape -h` to see the options here. These commands interact directly with the
 letterboxd.com website, not through a legit API.
 
-### API Client
+Found in the [cli/](cli/) directory.
+
+### API Client Library
 
 This should be more useful than the scraper. Interacts directly with the restful
 API from the command line. Check it out with `letterrestd api -h'.
+
+Found in the [client/](client/) directory.

@@ -66,4 +66,25 @@ paths:
       summary: Get List Example
       tags:
       - list
+  /users/{user}/watched:
+    get:
+      consumes:
+      - application/json
+      description: Get watched fils of a user
+      parameters:
+      - description: user
+        in: path
+        name: user
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.APIResponse'
+      summary: Get watched films per user
+      tags:
+      - users
 swagger: "2.0"

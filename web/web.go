@@ -44,6 +44,7 @@ func NewRouter(r *RouterOpt) *gin.Engine {
 	{
 		v1g.GET("/films/:slug", v1.GetFilm)
 		v1g.GET("/lists/:user/:slug", v1.GetList)
+		v1g.GET("/users/:user/watched", v1.GetWatched)
 	}
 
 	return router
