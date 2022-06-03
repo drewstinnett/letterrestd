@@ -27,7 +27,7 @@ func ExtractPaginationWithDoc(doc *goquery.Document) (*Pagination, error) {
 				t := strings.TrimSpace(s.Text())
 				p.CurrentPage, err = strconv.Atoi(t)
 				if err != nil {
-					log.Debugf("Error converting current page to int: %s", err)
+					log.WithError(err).Debug("Error converting current page to int")
 				}
 				// Set current page to last, it should be overridden later
 				p.TotalPages = p.CurrentPage
@@ -35,7 +35,7 @@ func ExtractPaginationWithDoc(doc *goquery.Document) (*Pagination, error) {
 				t := strings.TrimSpace(s.Text())
 				p.TotalPages, err = strconv.Atoi(t)
 				if err != nil {
-					log.Debugf("Error converting current page to int: %s", err)
+					log.WithError(err).Debug("Error converting total page to int")
 				}
 			}
 		})
