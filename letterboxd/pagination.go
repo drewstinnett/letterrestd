@@ -25,17 +25,21 @@ func ExtractPaginationWithDoc(doc *goquery.Document) (*Pagination, error) {
 			var err error
 			if s.HasClass("paginate-current") {
 				t := strings.TrimSpace(s.Text())
-				p.CurrentPage, err = strconv.Atoi(t)
-				if err != nil {
-					log.WithError(err).Debug("Error converting current page to int")
+				if t != "…" {
+					p.CurrentPage, err = strconv.Atoi(t)
+					if err != nil {
+						log.WithError(err).Debug("Error converting current page to int")
+					}
+					// Set current page to last, it should be overridden later
+					p.TotalPages = p.CurrentPage
 				}
-				// Set current page to last, it should be overridden later
-				p.TotalPages = p.CurrentPage
 			} else if s.HasClass("paginate-page") {
 				t := strings.TrimSpace(s.Text())
-				p.TotalPages, err = strconv.Atoi(t)
-				if err != nil {
-					log.WithError(err).Debug("Error converting total page to int")
+				if t != "…" {
+					p.TotalPages, err = strconv.Atoi(t)
+					if err != nil {
+						log.WithError(err).Debug("Error converting total page to int")
+					}
 				}
 			}
 		})
