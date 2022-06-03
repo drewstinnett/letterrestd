@@ -121,9 +121,6 @@ func (f *FilmServiceOp) GetFilmWithPath(ctx *context.Context, path string) (*Fil
 */
 
 func (f *FilmServiceOp) EnhanceFilmList(ctx *context.Context, films *[]*Film) error {
-	log.WithFields(log.Fields{
-		"count": len(*films),
-	}).Debug("Enhancing films")
 	var wg sync.WaitGroup
 	wg.Add(len(*films))
 	for _, film := range *films {

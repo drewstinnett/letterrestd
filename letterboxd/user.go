@@ -123,6 +123,11 @@ func (u *UserServiceOp) ListWatched(ctx *context.Context, userID string) ([]*Fil
 			return nil, resp, err
 		}
 		partialFilms := items.Data.([]*Film)
+		log.WithFields(log.Fields{
+			"count": len(partialFilms),
+			"page":  page,
+			"total": items.Pagintion.TotalPages,
+		}).Debug("Enhancing films")
 		err = u.client.Film.EnhanceFilmList(ctx, &partialFilms)
 		if err != nil {
 			log.WithError(err).Warn("Failed to enhance film list")
