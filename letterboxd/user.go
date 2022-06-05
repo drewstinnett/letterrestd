@@ -120,7 +120,7 @@ func (u *UserServiceOp) ListWatched(ctx *context.Context, userID string) ([]*Fil
 	previews = append(previews, partialFirstFilms...)
 	var wg sync.WaitGroup
 	wg.Add(pagination.TotalPages - 1)
-	guard := make(chan struct{}, 10)
+	guard := make(chan struct{}, 1)
 	filmC := make(chan []*Film)
 	for i := 2; i <= pagination.TotalPages; i++ {
 		guard <- struct{}{}

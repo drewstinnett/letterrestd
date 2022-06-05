@@ -34,11 +34,11 @@ snapshot:
   name_template: "{{ .Tag }}-snapshot"
 changelog:
   skip: true
-brews:
-  - name: 'letterrestd'
-    tap:
-      owner: drewstinnett
-      name: homebrew-tap
-    description: "API Operations using the Letterboxd website"
-    homepage: "https://github.com/drewstinnett/letterrestd"
-    license: BSD-2-Clause
+# brews:
+# name: 'letterrestd'
+# tap:
+#   owner: drewstinnett
+#   name: homebrew-tap
+# description: "API Operations using the Letterboxd website"
+# homepage: "https://github.com/drewstinnett/letterrestd"
+# license: BSD-2-Clause
