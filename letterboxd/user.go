@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/apex/log"
@@ -111,33 +112,35 @@ func (u *UserServiceOp) WatchList(ctx *context.Context, userID string) ([]*Film,
 
 func (u *UserServiceOp) ListWatched(ctx *context.Context, userID string) ([]*Film, *Response, error) {
 	var previews []*Film
-	page := 1
-	for {
-		req, err := http.NewRequest("GET", fmt.Sprintf("%s/%s/films/page/%d", u.client.BaseURL, userID, page), nil)
-		if err != nil {
-			return nil, nil, err
-		}
-		// var previews []FilmPreview
-		items, resp, err := u.client.sendRequest(req, ExtractUserFilms)
-		if err != nil {
-			return nil, resp, err
-		}
-		partialFilms := items.Data.([]*Film)
-		log.WithFields(log.Fields{
-			"count": len(partialFilms),
-			"page":  page,
-			"total": items.Pagintion.TotalPages,
-		}).Debug("Enhancing films")
-		err = u.client.Film.EnhanceFilmList(ctx, &partialFilms)
-		if err != nil {
-			log.WithError(err).Warn("Failed to enhance film list")
-		}
-		previews = append(previews, partialFilms...)
-		if items.Pagintion.IsLast {
-			break
-		}
-		page++
+	// Get the first page. This sets the pagination.
+	partialFirstFilms, pagination, err := u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/films/page/1", u.client.BaseURL, userID))
+	if err != nil {
+		return nil, nil, err
 	}
+	previews = append(previews, partialFirstFilms...)
+	var wg sync.WaitGroup
+	wg.Add(pagination.TotalPages - 1)
+	mu := sync.Mutex{}
+	guard := make(chan struct{}, 10)
+	for i := 2; i <= pagination.TotalPages; i++ {
+		guard <- struct{}{}
+		go func(i int) {
+			defer wg.Done()
+			partialFilms, _, err := u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/films/page/%v/", u.client.BaseURL, userID, i))
+			if err != nil {
+				log.WithFields(log.Fields{
+					"page": i,
+					"user": userID,
+				}).Warn("Failed to extract films")
+				return
+			}
+			mu.Lock()
+			previews = append(previews, partialFilms...)
+			mu.Unlock()
+			<-guard
+		}(i)
+	}
+	wg.Wait()
 	return previews, nil, nil
 }
 

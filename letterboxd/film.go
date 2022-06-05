@@ -31,6 +31,8 @@ type FilmService interface {
 	EnhanceFilmList(*context.Context, *[]*Film) error
 	Filmography(*context.Context, *FilmographyOpt) ([]*Film, error)
 	Get(*context.Context, string) (*Film, error)
+	ExtractFilmsWithPath(*context.Context, string) ([]*Film, *Pagination, error)
+	ExtractEnhancedFilmsWithPath(*context.Context, string) ([]*Film, *Pagination, error)
 }
 
 type FilmServiceOp struct {
@@ -56,6 +58,33 @@ func (f *FilmographyOpt) Validate() error {
 		return fmt.Errorf("Profession must be one of %v", profs)
 	}
 	return nil
+}
+
+func (f *FilmServiceOp) ExtractFilmsWithPath(ctx *context.Context, path string) ([]*Film, *Pagination, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s", path), nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	firstItems, _, err := f.client.sendRequest(req, ExtractUserFilms)
+	if err != nil {
+		return nil, nil, err
+	}
+	films := firstItems.Data.([]*Film)
+	return films, &firstItems.Pagintion, nil
+}
+
+func (f *FilmServiceOp) ExtractEnhancedFilmsWithPath(ctx *context.Context, path string) ([]*Film, *Pagination, error) {
+	films, pagination, err := f.ExtractFilmsWithPath(ctx, path)
+	if err != nil {
+		return nil, pagination, err
+	}
+
+	err = f.client.Film.EnhanceFilmList(ctx, &films)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return films, pagination, nil
 }
 
 func (f *FilmServiceOp) Get(ctx *context.Context, slug string) (*Film, error) {
@@ -108,7 +137,9 @@ func (f *FilmServiceOp) Filmography(ctx *context.Context, opt *FilmographyOpt) (
 func (f *FilmServiceOp) EnhanceFilmList(ctx *context.Context, films *[]*Film) error {
 	var wg sync.WaitGroup
 	wg.Add(len(*films))
+	guard := make(chan struct{}, 10)
 	for _, film := range *films {
+		guard <- struct{}{}
 		go func(film *Film) {
 			defer wg.Done()
 
@@ -116,6 +147,7 @@ func (f *FilmServiceOp) EnhanceFilmList(ctx *context.Context, films *[]*Film) er
 				log.WithError(err).Warn("Failed to get external IDs")
 				// return err
 			}
+			<-guard
 		}(film)
 	}
 	wg.Wait()

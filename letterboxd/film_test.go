@@ -116,6 +116,7 @@ func TestFilmography(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/actor/nicolas-cage") {
 			r, err := os.Open("testdata/filmography/actor/nicolas-cage.html")
+			defer r.Close()
 			require.NoError(t, err)
 			_, err = io.Copy(w, r)
 			require.NoError(t, err)

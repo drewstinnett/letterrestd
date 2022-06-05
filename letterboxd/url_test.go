@@ -81,6 +81,7 @@ func TestURLWatchList(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/mondodrew/watchlist") {
 			r, err := os.Open("testdata/user/watchlist.html")
+			defer r.Close()
 			require.NoError(t, err)
 			_, err = io.Copy(w, r)
 			require.NoError(t, err)
@@ -115,6 +116,7 @@ func TestURLUserList(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "dave/list/official-top-250-narrative-feature-films") {
 			r, err := os.Open("testdata/list/top250.html")
+			defer r.Close()
 			require.NoError(t, err)
 			_, err = io.Copy(w, r)
 			require.NoError(t, err)

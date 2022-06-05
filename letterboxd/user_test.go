@@ -105,6 +105,9 @@ func TestUserProfileExists(t *testing.T) {
 }
 
 func TestListWatched(t *testing.T) {
+	sweetbackF, err := os.Open("testdata/film/sweetback.html")
+	defer sweetbackF.Close()
+	require.NoError(t, err)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/someguy/films/page/") {
 			pageNo := strings.Split(r.URL.Path, "/")[4]
@@ -115,10 +118,7 @@ func TestListWatched(t *testing.T) {
 			require.NoError(t, err)
 			return
 		} else if strings.HasPrefix(r.URL.Path, "/film/") {
-			r, err := os.Open("testdata/film/sweetback.html")
-			defer r.Close()
-			require.NoError(t, err)
-			_, err = io.Copy(w, r)
+			_, err = io.Copy(w, sweetbackF)
 			require.NoError(t, err)
 			return
 		} else {
