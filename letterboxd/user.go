@@ -120,12 +120,13 @@ func (u *UserServiceOp) ListWatched(ctx *context.Context, userID string) ([]*Fil
 	previews = append(previews, partialFirstFilms...)
 	var wg sync.WaitGroup
 	wg.Add(pagination.TotalPages - 1)
-	mu := sync.Mutex{}
 	guard := make(chan struct{}, 10)
+	filmC := make(chan []*Film)
 	for i := 2; i <= pagination.TotalPages; i++ {
 		guard <- struct{}{}
 		go func(i int) {
 			defer wg.Done()
+			log.Infof("PAGE: %+v", i)
 			partialFilms, _, err := u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/films/page/%v/", u.client.BaseURL, userID, i))
 			if err != nil {
 				log.WithFields(log.Fields{
@@ -134,13 +135,19 @@ func (u *UserServiceOp) ListWatched(ctx *context.Context, userID string) ([]*Fil
 				}).Warn("Failed to extract films")
 				return
 			}
-			mu.Lock()
-			previews = append(previews, partialFilms...)
-			mu.Unlock()
+			filmC <- partialFilms
+			// previews = append(previews, partialFilms...)
 			<-guard
 		}(i)
 	}
+
+	for i := 2; i <= pagination.TotalPages; i++ {
+		partialFilms := <-filmC
+		log.Debugf("%+v", len(partialFilms))
+		previews = append(previews, partialFilms...)
+	}
 	wg.Wait()
+
 	return previews, nil, nil
 }
 
