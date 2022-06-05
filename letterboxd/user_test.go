@@ -1,6 +1,7 @@
 package letterboxd
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/apex/log"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
@@ -100,4 +102,41 @@ func TestUserProfileExists(t *testing.T) {
 			require.Error(t, err)
 		}
 	}
+}
+
+func TestListWatched(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/someguy/films/page/") {
+			pageNo := strings.Split(r.URL.Path, "/")[4]
+			r, err := os.Open(fmt.Sprintf("testdata/user/watched-paginated/%v.html", pageNo))
+			defer r.Close()
+			require.NoError(t, err)
+			_, err = io.Copy(w, r)
+			require.NoError(t, err)
+			return
+		} else if strings.HasPrefix(r.URL.Path, "/film/") {
+			r, err := os.Open("testdata/film/sweetback.html")
+			defer r.Close()
+			require.NoError(t, err)
+			_, err = io.Copy(w, r)
+			require.NoError(t, err)
+			return
+		} else {
+			log.WithFields(log.Fields{
+				"url": r.URL.String(),
+			}).Warn("unexpected request")
+			w.WriteHeader(http.StatusNotFound)
+		}
+		defer r.Body.Close()
+	}))
+	defer srv.Close()
+
+	client := NewScrapeClient(nil)
+	client.BaseURL = srv.URL
+
+	watched, _, err := client.User.ListWatched(nil, "someguy")
+	require.NoError(t, err)
+	require.NotNil(t, watched)
+
+	require.Equal(t, 321, len(watched))
 }

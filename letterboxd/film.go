@@ -105,21 +105,6 @@ func (f *FilmServiceOp) Filmography(ctx *context.Context, opt *FilmographyOpt) (
 	return films, nil
 }
 
-/*
-func (f *FilmServiceOp) GetFilmWithPath(ctx *context.Context, path string) (*Film, error) {
-	var film *Film
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s%s", f.client.BaseURL, path), nil)
-	if err != nil {
-		return nil, err
-	}
-	_, err = f.client.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	return film, nil
-}
-*/
-
 func (f *FilmServiceOp) EnhanceFilmList(ctx *context.Context, films *[]*Film) error {
 	var wg sync.WaitGroup
 	wg.Add(len(*films))
