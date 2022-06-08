@@ -25,6 +25,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/apex/log"
 	"github.com/drewstinnett/letterrestd/letterboxd"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -37,14 +38,28 @@ var listCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
-		films, err := client.List.ListFilms(ctx, &letterboxd.ListFilmsOpt{
-			User: args[0],
-			Slug: args[1],
-		})
-		cobra.CheckErr(err)
-		d, err := yaml.Marshal(films)
-		cobra.CheckErr(err)
-		fmt.Println(string(d))
+		filmC := make(chan *letterboxd.Film)
+		doneC := make(chan error)
+		go client.User.StreamListWithChan(ctx, args[0], args[1], filmC, doneC)
+		for {
+			select {
+
+			case film := <-filmC:
+				d, err := yaml.Marshal([]letterboxd.Film{
+					*film,
+				})
+				cobra.CheckErr(err)
+				fmt.Println(string(d))
+			case err := <-doneC:
+				if err != nil {
+					log.WithError(err).Error("Error streaming watched")
+				} else {
+					log.Info("Finished")
+					return
+				}
+			default:
+			}
+		}
 	},
 }
 

@@ -63,9 +63,9 @@ func (f *FilmographyOpt) Validate() error {
 }
 
 type FilmBatchOpts struct {
-	Watched   []string `json:"watched"`
-	Lists     []string `json:"lists"`
-	WatchList []string `json:"watchlist"`
+	Watched   []string  `json:"watched"`
+	Lists     []*ListID `json:"lists"`
+	WatchList []string  `json:"watchlist"`
 }
 
 // StreamBatch Get a bunch of different films at once and stream them back to the user
@@ -75,8 +75,12 @@ func (f *FilmServiceOp) StreamBatchWithChan(ctx context.Context, batchOpts *Film
 		log.Info("Completed Stream Batch")
 		done <- nil
 	}()
+	var wg sync.WaitGroup
 
-	if len(batchOpts.Watched) > 0 {
+	// Handle User watched films first
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		for _, username := range batchOpts.Watched {
 			// userFilms := []Film{}
 			log.WithFields(log.Fields{
@@ -101,7 +105,69 @@ func (f *FilmServiceOp) StreamBatchWithChan(ctx context.Context, batchOpts *Film
 				}
 			}
 		}
-	}
+	}()
+	// Next up handle Lists
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for _, listID := range batchOpts.Lists {
+			// userFilms := []Film{}
+			log.WithFields(log.Fields{
+				"username": listID.User,
+				"slug":     listID.Slug,
+			}).Info("Fetching list films")
+			listFilmC := make(chan *Film)
+			listDone := make(chan error)
+			go f.client.User.StreamListWithChan(ctx, listID.User, listID.Slug, listFilmC, listDone)
+			loop := true
+			for loop {
+				select {
+				case film := <-listFilmC:
+					filmsC <- film
+				case err := <-listDone:
+					if err != nil {
+						log.WithError(err).Error("Failed to get list films")
+						done <- err
+					} else {
+						log.Info("Finished")
+						loop = false
+					}
+				}
+			}
+		}
+	}()
+
+	// Finally, handle watch lists
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for _, user := range batchOpts.WatchList {
+			// userFilms := []Film{}
+			log.WithFields(log.Fields{
+				"username": user,
+			}).Info("Fetching watchlist films")
+			listFilmC := make(chan *Film)
+			listDone := make(chan error)
+			go f.client.User.StreamWatchListWithChan(ctx, user, listFilmC, listDone)
+			loop := true
+			for loop {
+				select {
+				case film := <-listFilmC:
+					filmsC <- film
+				case err := <-listDone:
+					if err != nil {
+						log.WithError(err).Error("Failed to get watchlist films")
+						done <- err
+					} else {
+						log.Info("Finished")
+						loop = false
+					}
+				}
+			}
+		}
+	}()
+
+	wg.Wait()
 }
 
 // StreamBatch Get a bunch of different films at once and stream them back to the user

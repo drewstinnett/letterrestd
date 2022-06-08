@@ -47,3 +47,30 @@ func TestNormalizeSlug(t *testing.T) {
 		require.Equal(t, tt.expectedSlug, slug)
 	}
 }
+
+func TestParseListArgs(t *testing.T) {
+	tests := []struct {
+		args    []string
+		want    []*ListID
+		wantErr bool
+	}{
+		{
+			[]string{"foo/bar"},
+			[]*ListID{
+				{
+					User: "foo",
+					Slug: "bar",
+				},
+			},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		got, err := ParseListArgs(tt.args)
+		if tt.wantErr {
+			require.Error(t, err)
+		} else {
+			require.Equal(t, tt.want, got)
+		}
+	}
+}

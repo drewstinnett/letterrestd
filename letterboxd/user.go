@@ -19,6 +19,8 @@ type UserService interface {
 	StreamWatched(context.Context, string) (chan []*Film, *Pagination, error)
 	StreamWatchedWithChan(context.Context, string, chan *Film, chan error)
 	WatchList(context.Context, string) ([]*Film, *Response, error)
+	StreamListWithChan(context.Context, string, string, chan *Film, chan error)
+	StreamWatchListWithChan(context.Context, string, chan *Film, chan error)
 	Exists(context.Context, string) (bool, error)
 	Profile(context.Context, string) (*User, *Response, error)
 }
@@ -187,7 +189,6 @@ func (u *UserServiceOp) StreamWatched(ctx context.Context, userID string) (chan 
 
 	itemsPerFullPage := len(firstFilms)
 	pagination.TotalItems = itemsPerFullPage
-	log.Debugf("-------- PAGE 1 : YOYOYO SOME PAGEY FOR YOU: %+v", pagination)
 
 	// If more than 1 page, get the last page too, which will likely be a
 	// partial batch of films
@@ -230,7 +231,6 @@ func (u *UserServiceOp) Watched(ctx context.Context, userID string) ([]*Film, *R
 	}
 	previews = append(previews, partialFirstFilms...)
 	for i := 2; i <= pagination.TotalPages; i++ {
-		log.Infof("PAGE: %+v", i)
 		partialFilms, _, err := u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/films/page/%v/", u.client.BaseURL, userID, i))
 		if err != nil {
 			log.WithFields(log.Fields{
@@ -280,4 +280,129 @@ func ExtractUserFilms(r io.Reader) (interface{}, *Pagination, error) {
 		}
 	}
 	return previews, pagination, nil
+}
+
+func (u *UserServiceOp) StreamListWithChan(
+	ctx context.Context,
+	username string,
+	slug string,
+	rchan chan *Film,
+	done chan error,
+) {
+	var err error
+	var pagination *Pagination
+	defer func() {
+		log.Debug("Closing StreamListWithChan")
+		done <- nil
+	}()
+	firstFilms, pagination, err := u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/list/%s/page/1", u.client.BaseURL, username, slug))
+	if err != nil {
+		done <- err
+	}
+	for _, film := range firstFilms {
+		rchan <- film
+	}
+
+	itemsPerFullPage := len(firstFilms)
+	pagination.TotalItems = itemsPerFullPage
+
+	// If more than 1 page, get the last page too, which will likely be a
+	// partial batch of films
+	if pagination.TotalPages > 1 {
+		var lastFilms []*Film
+		lastFilms, _, err = u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/list/%s/page/%v", u.client.BaseURL, username, slug, pagination.TotalPages))
+		if err != nil {
+			done <- err
+		}
+		pagination.TotalItems = pagination.TotalItems + len(lastFilms)
+		for _, film := range lastFilms {
+			rchan <- film
+		}
+	}
+	// Gather up the middle pages here
+	if pagination.TotalPages > 2 {
+		pagination.TotalItems = pagination.TotalItems + ((pagination.TotalPages - 2) * itemsPerFullPage)
+		middlePageCount := pagination.TotalPages - 2
+		wg := sync.WaitGroup{}
+		wg.Add(middlePageCount)
+		for i := 2; i < pagination.TotalPages; i++ {
+			go func(i int) {
+				defer wg.Done()
+				pfilms, _, err := u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/list/%v/page/%v/", u.client.BaseURL, username, slug, i))
+				if err != nil {
+					log.WithFields(log.Fields{
+						"page": i,
+						"user": username,
+					}).Warn("Failed to extract films")
+					return
+				}
+				for _, film := range pfilms {
+					rchan <- film
+				}
+			}(i)
+		}
+		wg.Wait()
+	}
+}
+
+func (u *UserServiceOp) StreamWatchListWithChan(
+	ctx context.Context,
+	username string,
+	rchan chan *Film,
+	done chan error,
+) {
+	var err error
+	var pagination *Pagination
+	defer func() {
+		log.Debug("Closing StreamWatchListWithChan")
+		done <- nil
+	}()
+	firstFilms, pagination, err := u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/watchlist/page/1", u.client.BaseURL, username))
+	if err != nil {
+		done <- err
+	}
+	for _, film := range firstFilms {
+		rchan <- film
+	}
+
+	itemsPerFullPage := len(firstFilms)
+	pagination.TotalItems = itemsPerFullPage
+
+	// If more than 1 page, get the last page too, which will likely be a
+	// partial batch of films
+	if pagination.TotalPages > 1 {
+		var lastFilms []*Film
+		lastFilms, _, err = u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/watchlist/page/%v", u.client.BaseURL, username, pagination.TotalPages))
+		if err != nil {
+			done <- err
+		}
+		pagination.TotalItems = pagination.TotalItems + len(lastFilms)
+		for _, film := range lastFilms {
+			rchan <- film
+		}
+	}
+	// Gather up the middle pages here
+	if pagination.TotalPages > 2 {
+		pagination.TotalItems = pagination.TotalItems + ((pagination.TotalPages - 2) * itemsPerFullPage)
+		middlePageCount := pagination.TotalPages - 2
+		wg := sync.WaitGroup{}
+		wg.Add(middlePageCount)
+		for i := 2; i < pagination.TotalPages; i++ {
+			go func(i int) {
+				defer wg.Done()
+				pfilms, _, err := u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/watchlist/page/%v/", u.client.BaseURL, username, i))
+				if err != nil {
+					log.WithFields(log.Fields{
+						"page": i,
+						"user": username,
+					}).Warn("Failed to extract films")
+					return
+				}
+				for _, film := range pfilms {
+					rchan <- film
+				}
+			}(i)
+		}
+		wg.Wait()
+	}
 }

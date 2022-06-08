@@ -37,10 +37,23 @@ var batchCmd = &cobra.Command{
 	Use:   "batch",
 	Short: "Do a batch scrape to get films from different places",
 	Run: func(cmd *cobra.Command, args []string) {
-		userWatched, err := cmd.Flags().GetStringArray("user-watched")
+		userWatched, err := cmd.Flags().GetStringArray("watched")
 		cobra.CheckErr(err)
+
+		// Get lists
+		listsA, err := cmd.Flags().GetStringArray("list")
+		cobra.CheckErr(err)
+		lists, err := letterboxd.ParseListArgs(listsA)
+		cobra.CheckErr(err)
+
+		// Get Watch lists
+		watchLists, err := cmd.Flags().GetStringArray("watchlist")
+		cobra.CheckErr(err)
+
 		filmOpts := &letterboxd.FilmBatchOpts{
-			Watched: userWatched,
+			Watched:   userWatched,
+			Lists:     lists,
+			WatchList: watchLists,
 		}
 		ctx := context.Background()
 		filmC := make(chan *letterboxd.Film)
@@ -79,7 +92,9 @@ func init() {
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
 	// batchCmd.PersistentFlags().String("foo", "", "A help for foo")
-	batchCmd.PersistentFlags().StringArray("user-watched", []string{}, "Watched films for a given user")
+	batchCmd.PersistentFlags().StringArray("watched", []string{}, "Watched films for a given user")
+	batchCmd.PersistentFlags().StringArray("list", []string{}, "User list in the format of {username}/{list-slug}")
+	batchCmd.PersistentFlags().StringArray("watchlist", []string{}, "Films on a given users Watch List")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:

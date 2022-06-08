@@ -19,6 +19,11 @@ type ListServiceOp struct {
 	client *ScrapeClient
 }
 
+type ListID struct {
+	User string
+	Slug string
+}
+
 // ListFilmsOpt is the options for the ListFilms method
 type ListFilmsOpt struct {
 	User      string // Username of the user for the list. Example: 'dave'

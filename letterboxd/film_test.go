@@ -196,6 +196,14 @@ func TestStreamBatchWithChan(t *testing.T) {
 			_, err = io.Copy(w, rp)
 			require.NoError(t, err)
 			return
+		} else if strings.Contains(r.URL.Path, "/dave/list/official-top-250-narrative-feature-films/page/") {
+			pageNo := strings.Split(r.URL.Path, "/")[5]
+			rp, err := os.Open(fmt.Sprintf("testdata/list/lists-page-%v.html", pageNo))
+			defer rp.Close()
+			require.NoError(t, err)
+			_, err = io.Copy(w, rp)
+			require.NoError(t, err)
+			return
 		} else if strings.HasPrefix(r.URL.Path, "/film/") {
 			_, err = io.Copy(w, sweetbackF)
 			require.NoError(t, err)
@@ -219,6 +227,9 @@ func TestStreamBatchWithChan(t *testing.T) {
 	done := make(chan error)
 	go client.Film.StreamBatchWithChan(nil, &FilmBatchOpts{
 		Watched: []string{"someguy"},
+		Lists: []*ListID{
+			{"dave", "official-top-250-narrative-feature-films"},
+		},
 	}, watchedC, done)
 loop:
 	for {
@@ -234,5 +245,5 @@ loop:
 	}
 
 	require.NotEmpty(t, watched)
-	require.Equal(t, 321, len(watched))
+	require.Equal(t, 571, len(watched))
 }

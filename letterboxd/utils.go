@@ -36,3 +36,20 @@ func StringInSlice(a string, list []string) bool {
 	}
 	return false
 }
+
+// Given a slice of strings, return a slice of ListIDs
+func ParseListArgs(args []string) ([]*ListID, error) {
+	var ret []*ListID
+	for _, argS := range args {
+		if !strings.Contains(argS, "/") {
+			return nil, errors.New("List Arg must contain a '/' (Example: username/list-slug)")
+		}
+		parts := strings.Split(argS, "/")
+		lid := &ListID{
+			User: parts[0],
+			Slug: parts[1],
+		}
+		ret = append(ret, lid)
+	}
+	return ret, nil
+}
