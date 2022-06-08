@@ -15,7 +15,7 @@ import (
 )
 
 type UserService interface {
-	ListWatched(context.Context, string) ([]*Film, *Response, error)
+	Watched(context.Context, string) ([]*Film, *Response, error)
 	StreamWatched(context.Context, string) (chan []*Film, *Pagination, error)
 	StreamWatchedWithChan(context.Context, string, chan *Film, chan error)
 	WatchList(context.Context, string) ([]*Film, *Response, error)
@@ -221,7 +221,7 @@ func (u *UserServiceOp) StreamWatched(ctx context.Context, userID string) (chan 
 	return rchan, pagination, nil
 }
 
-func (u *UserServiceOp) ListWatched(ctx context.Context, userID string) ([]*Film, *Response, error) {
+func (u *UserServiceOp) Watched(ctx context.Context, userID string) ([]*Film, *Response, error) {
 	var previews []*Film
 	// Get the first page. This sets the pagination.
 	partialFirstFilms, pagination, err := u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/films/page/1", u.client.BaseURL, userID))

@@ -18,7 +18,7 @@ import (
 func GetWatched(c *gin.Context) {
 	user := c.Param("user")
 	sc := c.MustGet("client").(letterboxd.ScrapeClient)
-	films, _, err := sc.User.ListWatched(nil, user)
+	films, _, err := sc.User.Watched(nil, user)
 	if err != nil {
 		c.JSON(500, gin.H{
 			"message": err.Error(),

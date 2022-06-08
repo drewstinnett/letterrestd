@@ -24,6 +24,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 
 	"github.com/apex/log"
 	"github.com/drewstinnett/letterrestd/letterboxd"
@@ -42,15 +43,30 @@ var batchCmd = &cobra.Command{
 			Watched: userWatched,
 		}
 		ctx := context.Background()
-		films, pagination, err := client.Film.StreamBatch(ctx, filmOpts)
-		cobra.CheckErr(err)
-		log.Infof("Paginage: %+v", pagination)
-		log.Debug("ABOUT TO JUMP IN TO FOR LOOP")
-		for i := 0; i < pagination.TotalItems; i++ {
-			film := <-films
-			d, err := yaml.Marshal(film)
-			cobra.CheckErr(err)
-			fmt.Println(string(d))
+		filmC := make(chan *letterboxd.Film)
+		done := make(chan error)
+		count := int64(0)
+		go client.Film.StreamBatchWithChan(ctx, filmOpts, filmC, done)
+		for {
+			select {
+
+			case film := <-filmC:
+				d, err := yaml.Marshal([]letterboxd.Film{
+					*film,
+				})
+				cobra.CheckErr(err)
+				fmt.Println(string(d))
+				atomic.AddInt64(&count, 1)
+			case err := <-done:
+				if err != nil {
+					log.WithError(err).Error("Error batch streaming watched")
+				} else {
+					log.Info("Finished")
+					log.Infof("Total Count: %d", count)
+					return
+				}
+			default:
+			}
 		}
 	},
 }

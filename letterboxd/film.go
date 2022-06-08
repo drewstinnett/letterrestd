@@ -34,6 +34,7 @@ type FilmService interface {
 	ExtractFilmsWithPath(context.Context, string) ([]*Film, *Pagination, error)
 	ExtractEnhancedFilmsWithPath(context.Context, string) ([]*Film, *Pagination, error)
 	StreamBatch(context.Context, *FilmBatchOpts) (chan *Film, *Pagination, error)
+	StreamBatchWithChan(context.Context, *FilmBatchOpts, chan *Film, chan error)
 }
 
 type FilmServiceOp struct {
@@ -68,13 +69,47 @@ type FilmBatchOpts struct {
 }
 
 // StreamBatch Get a bunch of different films at once and stream them back to the user
+func (f *FilmServiceOp) StreamBatchWithChan(ctx context.Context, batchOpts *FilmBatchOpts, filmsC chan *Film, done chan error) {
+	// var films []*Film
+	defer func() {
+		log.Info("Completed Stream Batch")
+		done <- nil
+	}()
+
+	if len(batchOpts.Watched) > 0 {
+		for _, username := range batchOpts.Watched {
+			// userFilms := []Film{}
+			log.WithFields(log.Fields{
+				"username": username,
+			}).Info("Fetching watched films")
+			userFilmC := make(chan *Film)
+			userDone := make(chan error)
+			go f.client.User.StreamWatchedWithChan(ctx, username, userFilmC, userDone)
+			loop := true
+			for loop {
+				select {
+				case film := <-userFilmC:
+					filmsC <- film
+				case err := <-userDone:
+					if err != nil {
+						log.WithError(err).Error("Failed to get watched films")
+						done <- err
+					} else {
+						log.Info("Finished")
+						loop = false
+					}
+				}
+			}
+		}
+	}
+}
+
+// StreamBatch Get a bunch of different films at once and stream them back to the user
 func (f *FilmServiceOp) StreamBatch(ctx context.Context, batchOpts *FilmBatchOpts) (chan *Film, *Pagination, error) {
 	retC := make(chan *Film, 1)
 
 	var pagination *Pagination
 	// Simple wg to make sure 1 thread has finished and we have the pagination data
-	var wg sync.WaitGroup
-	wg.Add(1)
 	if len(batchOpts.Watched) > 0 {
 		go func() {
 			for _, username := range batchOpts.Watched {
@@ -84,7 +119,6 @@ func (f *FilmServiceOp) StreamBatch(ctx context.Context, batchOpts *FilmBatchOpt
 				var err error
 				var watched chan []*Film
 				watched, pagination, err = f.client.User.StreamWatched(ctx, username)
-				wg.Done()
 				if err != nil {
 					log.WithFields(log.Fields{
 						"username": username,
@@ -101,7 +135,6 @@ func (f *FilmServiceOp) StreamBatch(ctx context.Context, batchOpts *FilmBatchOpt
 			}
 		}()
 	}
-	wg.Wait()
 	return retC, pagination, nil
 }
 

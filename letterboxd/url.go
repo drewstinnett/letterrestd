@@ -84,7 +84,7 @@ func (u *URLServiceOp) Items(ctx *context.Context, lurl string) (interface{}, er
 			"path": path,
 			"user": user,
 		}).Debug("Detected user films")
-		items, _, err := client.User.ListWatched(nil, user)
+		items, _, err := client.User.Watched(nil, user)
 		if err != nil {
 			return nil, err
 		}

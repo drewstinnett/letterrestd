@@ -134,7 +134,7 @@ func TestListWatched(t *testing.T) {
 	client := NewScrapeClient(nil)
 	client.BaseURL = srv.URL
 
-	watched, _, err := client.User.ListWatched(nil, "someguy")
+	watched, _, err := client.User.Watched(nil, "someguy")
 	require.NoError(t, err)
 	require.NotNil(t, watched)
 

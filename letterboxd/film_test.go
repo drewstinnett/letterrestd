@@ -182,3 +182,57 @@ func TestValidateFilmography(t *testing.T) {
 		}
 	}
 }
+
+func TestStreamBatchWithChan(t *testing.T) {
+	sweetbackF, err := os.Open("testdata/film/sweetback.html")
+	defer sweetbackF.Close()
+	require.NoError(t, err)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/someguy/films/page/") {
+			pageNo := strings.Split(r.URL.Path, "/")[4]
+			rp, err := os.Open(fmt.Sprintf("testdata/user/watched-paginated/%v.html", pageNo))
+			defer rp.Close()
+			require.NoError(t, err)
+			_, err = io.Copy(w, rp)
+			require.NoError(t, err)
+			return
+		} else if strings.HasPrefix(r.URL.Path, "/film/") {
+			_, err = io.Copy(w, sweetbackF)
+			require.NoError(t, err)
+			return
+		} else {
+			log.WithFields(log.Fields{
+				"url": r.URL.String(),
+			}).Warn("unexpected request")
+			w.WriteHeader(http.StatusNotFound)
+		}
+		defer r.Body.Close()
+	}))
+	defer srv.Close()
+
+	client := NewScrapeClient(nil)
+	client.BaseURL = srv.URL
+
+	log.Info("Streaming movies")
+	watchedC := make(chan *Film, 0)
+	var watched []*Film
+	done := make(chan error)
+	go client.Film.StreamBatchWithChan(nil, &FilmBatchOpts{
+		Watched: []string{"someguy"},
+	}, watchedC, done)
+loop:
+	for {
+		select {
+
+		case film := <-watchedC:
+			watched = append(watched, film)
+		case err := <-done:
+			require.NoError(t, err)
+			break loop
+		default:
+		}
+	}
+
+	require.NotEmpty(t, watched)
+	require.Equal(t, 321, len(watched))
+}
