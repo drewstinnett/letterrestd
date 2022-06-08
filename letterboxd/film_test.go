@@ -65,17 +65,17 @@ func TestEnhanceFilmList(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/dave/list/official-top-250-narrative-feature-films/page/") {
 			pageNo := strings.Split(r.URL.Path, "/")[5]
-			r, err := os.Open(fmt.Sprintf("testdata/list/lists-page-%v.html", pageNo))
-			defer r.Close()
+			rp, err := os.Open(fmt.Sprintf("testdata/list/lists-page-%v.html", pageNo))
+			defer rp.Close()
 			require.NoError(t, err)
-			_, err = io.Copy(w, r)
+			_, err = io.Copy(w, rp)
 			require.NoError(t, err)
 			return
 		} else if strings.HasPrefix(r.URL.Path, "/film/") {
-			r, err := os.Open("testdata/film/sweetback.html")
-			defer r.Close()
+			rp, err := os.Open("testdata/film/sweetback.html")
+			defer rp.Close()
 			require.NoError(t, err)
-			_, err = io.Copy(w, r)
+			_, err = io.Copy(w, rp)
 			require.NoError(t, err)
 			return
 		} else {
@@ -115,17 +115,17 @@ func TestEnhanceFilmList(t *testing.T) {
 func TestFilmography(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/actor/nicolas-cage") {
-			r, err := os.Open("testdata/filmography/actor/nicolas-cage.html")
-			defer r.Close()
+			rp, err := os.Open("testdata/filmography/actor/nicolas-cage.html")
+			defer rp.Close()
 			require.NoError(t, err)
-			_, err = io.Copy(w, r)
+			_, err = io.Copy(w, rp)
 			require.NoError(t, err)
 			return
 		} else if strings.HasPrefix(r.URL.Path, "/film/") {
-			r, err := os.Open("testdata/film/sweetback.html")
-			defer r.Close()
+			rp, err := os.Open("testdata/film/sweetback.html")
+			defer rp.Close()
 			require.NoError(t, err)
-			_, err = io.Copy(w, r)
+			_, err = io.Copy(w, rp)
 			require.NoError(t, err)
 			return
 		} else {

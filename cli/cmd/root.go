@@ -38,7 +38,7 @@ import (
 var (
 	cfgFile string
 	client  *letterboxd.ScrapeClient
-	ctx     *context.Context
+	ctx     context.Context
 	Verbose bool
 )
 

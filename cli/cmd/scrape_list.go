@@ -37,7 +37,7 @@ var listCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
-		films, err := client.List.ListFilms(&ctx, &letterboxd.ListFilmsOpt{
+		films, err := client.List.ListFilms(ctx, &letterboxd.ListFilmsOpt{
 			User: args[0],
 			Slug: args[1],
 		})

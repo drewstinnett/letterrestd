@@ -12,7 +12,7 @@ import (
 )
 
 type ListService interface {
-	ListFilms(*context.Context, *ListFilmsOpt) ([]*Film, error)
+	ListFilms(context.Context, *ListFilmsOpt) ([]*Film, error)
 }
 
 type ListServiceOp struct {
@@ -27,7 +27,7 @@ type ListFilmsOpt struct {
 	LastPage  int    // Last page to fetch. Defaults to FirstPage. Use -1 to fetch all pages
 }
 
-func (l *ListServiceOp) ListFilms(ctx *context.Context, opt *ListFilmsOpt) ([]*Film, error) {
+func (l *ListServiceOp) ListFilms(ctx context.Context, opt *ListFilmsOpt) ([]*Film, error) {
 	var films []*Film
 
 	startPage, stopPage, err := normalizeStartStop(opt.FirstPage, opt.LastPage)

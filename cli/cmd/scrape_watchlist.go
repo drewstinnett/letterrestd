@@ -37,7 +37,7 @@ var watchlistCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
-		items, _, err := client.User.WatchList(&ctx, args[0])
+		items, _, err := client.User.WatchList(ctx, args[0])
 		cobra.CheckErr(err)
 		d, err := yaml.Marshal(items)
 		cobra.CheckErr(err)

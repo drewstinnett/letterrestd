@@ -15,10 +15,12 @@ import (
 )
 
 type UserService interface {
-	ListWatched(ctx *context.Context, userID string) ([]*Film, *Response, error)
-	WatchList(ctx *context.Context, userID string) ([]*Film, *Response, error)
-	Exists(*context.Context, string) (bool, error)
-	Profile(ctx *context.Context, userID string) (*User, *Response, error)
+	ListWatched(context.Context, string) ([]*Film, *Response, error)
+	StreamWatched(context.Context, string) (chan []*Film, *Pagination, error)
+	StreamWatchedWithChan(context.Context, string, chan *Film, chan error)
+	WatchList(context.Context, string) ([]*Film, *Response, error)
+	Exists(context.Context, string) (bool, error)
+	Profile(context.Context, string) (*User, *Response, error)
 }
 
 type User struct {
@@ -67,7 +69,7 @@ func ExtractUser(r io.Reader) (interface{}, *Pagination, error) {
 	return user, nil, nil
 }
 
-func (u *UserServiceOp) Profile(ctx *context.Context, userID string) (*User, *Response, error) {
+func (u *UserServiceOp) Profile(ctx context.Context, userID string) (*User, *Response, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/%s", u.client.BaseURL, userID), nil)
 	if err != nil {
 		return nil, nil, err
@@ -79,11 +81,11 @@ func (u *UserServiceOp) Profile(ctx *context.Context, userID string) (*User, *Re
 	return user.Data.(*User), resp, nil
 }
 
-func (u *UserServiceOp) Exists(ctx *context.Context, userID string) (bool, error) {
+func (u *UserServiceOp) Exists(ctx context.Context, userID string) (bool, error) {
 	return false, nil
 }
 
-func (u *UserServiceOp) WatchList(ctx *context.Context, userID string) ([]*Film, *Response, error) {
+func (u *UserServiceOp) WatchList(ctx context.Context, userID string) ([]*Film, *Response, error) {
 	var previews []*Film
 	page := 1
 	for {
@@ -110,7 +112,116 @@ func (u *UserServiceOp) WatchList(ctx *context.Context, userID string) ([]*Film,
 	return previews, nil, nil
 }
 
-func (u *UserServiceOp) ListWatched(ctx *context.Context, userID string) ([]*Film, *Response, error) {
+func (u *UserServiceOp) StreamWatchedWithChan(ctx context.Context, userID string, rchan chan *Film, done chan error) {
+	var err error
+	var pagination *Pagination
+	defer func() {
+		log.Debug("Closing STREAMWATCHED")
+		done <- nil
+	}()
+	log.Debug("About to start streaming fims")
+	// Get the first page. This seeds the pagination.
+	firstFilms, pagination, err := u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/films/page/1", u.client.BaseURL, userID))
+	if err != nil {
+		done <- err
+	}
+	for _, film := range firstFilms {
+		rchan <- film
+	}
+
+	itemsPerFullPage := len(firstFilms)
+	pagination.TotalItems = itemsPerFullPage
+
+	// If more than 1 page, get the last page too, which will likely be a
+	// partial batch of films
+	if pagination.TotalPages > 1 {
+		var lastFilms []*Film
+		lastFilms, _, err = u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/films/page/%v", u.client.BaseURL, userID, pagination.TotalPages))
+		if err != nil {
+			done <- err
+		}
+		pagination.TotalItems = pagination.TotalItems + len(lastFilms)
+		for _, film := range lastFilms {
+			rchan <- film
+		}
+	}
+	// Gather up the middle pages here
+	if pagination.TotalPages > 2 {
+		pagination.TotalItems = pagination.TotalItems + ((pagination.TotalPages - 2) * itemsPerFullPage)
+		middlePageCount := pagination.TotalPages - 2
+		wg := sync.WaitGroup{}
+		wg.Add(middlePageCount)
+		for i := 2; i < pagination.TotalPages; i++ {
+			go func(i int) {
+				defer wg.Done()
+				pfilms, _, err := u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/films/page/%v/", u.client.BaseURL, userID, i))
+				if err != nil {
+					log.WithFields(log.Fields{
+						"page": i,
+						"user": userID,
+					}).Warn("Failed to extract films")
+					return
+				}
+				for _, film := range pfilms {
+					rchan <- film
+				}
+			}(i)
+		}
+		wg.Wait()
+	}
+}
+
+func (u *UserServiceOp) StreamWatched(ctx context.Context, userID string) (chan []*Film, *Pagination, error) {
+	var err error
+	var pagination *Pagination
+	log.Debug("Starting STREAMWATCHED")
+	// Get the first page. This seeds the pagination.
+	firstFilms, pagination, err := u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/films/page/1", u.client.BaseURL, userID))
+	if err != nil {
+		return nil, nil, err
+	}
+	rchan := make(chan []*Film, pagination.TotalPages)
+	log.Debugf("ABOUT TO DUMP FIRST PARTIAL FILMS: %+v", firstFilms)
+	rchan <- firstFilms
+	// rchan <- partialFilms
+
+	itemsPerFullPage := len(firstFilms)
+	pagination.TotalItems = itemsPerFullPage
+	log.Debugf("-------- PAGE 1 : YOYOYO SOME PAGEY FOR YOU: %+v", pagination)
+
+	// If more than 1 page, get the last page too, which will likely be a
+	// partial batch of films
+	log.Debug("GONNA LOOK AT GT 1")
+	if pagination.TotalPages > 1 {
+		var lastFilms []*Film
+		lastFilms, _, err = u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/films/page/%v", u.client.BaseURL, userID, pagination.TotalPages))
+		if err != nil {
+			return nil, nil, err
+		}
+		pagination.TotalItems = pagination.TotalItems + len(lastFilms)
+		rchan <- lastFilms
+	}
+	// Gather up the middle pages here
+	if pagination.TotalPages > 2 {
+		pagination.TotalItems = pagination.TotalItems + ((pagination.TotalPages - 2) * itemsPerFullPage)
+		for i := 2; i < pagination.TotalPages; i++ {
+			go func(i int) {
+				pfilms, _, err := u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/films/page/%v/", u.client.BaseURL, userID, i))
+				if err != nil {
+					log.WithFields(log.Fields{
+						"page": i,
+						"user": userID,
+					}).Warn("Failed to extract films")
+					return
+				}
+				rchan <- pfilms
+			}(i)
+		}
+	}
+	return rchan, pagination, nil
+}
+
+func (u *UserServiceOp) ListWatched(ctx context.Context, userID string) ([]*Film, *Response, error) {
 	var previews []*Film
 	// Get the first page. This sets the pagination.
 	partialFirstFilms, pagination, err := u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/films/page/1", u.client.BaseURL, userID))
@@ -118,35 +229,18 @@ func (u *UserServiceOp) ListWatched(ctx *context.Context, userID string) ([]*Fil
 		return nil, nil, err
 	}
 	previews = append(previews, partialFirstFilms...)
-	var wg sync.WaitGroup
-	wg.Add(pagination.TotalPages - 1)
-	guard := make(chan struct{}, 1)
-	filmC := make(chan []*Film)
 	for i := 2; i <= pagination.TotalPages; i++ {
-		guard <- struct{}{}
-		go func(i int) {
-			defer wg.Done()
-			log.Infof("PAGE: %+v", i)
-			partialFilms, _, err := u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/films/page/%v/", u.client.BaseURL, userID, i))
-			if err != nil {
-				log.WithFields(log.Fields{
-					"page": i,
-					"user": userID,
-				}).Warn("Failed to extract films")
-				return
-			}
-			filmC <- partialFilms
-			// previews = append(previews, partialFilms...)
-			<-guard
-		}(i)
-	}
-
-	for i := 2; i <= pagination.TotalPages; i++ {
-		partialFilms := <-filmC
-		log.Debugf("%+v", len(partialFilms))
+		log.Infof("PAGE: %+v", i)
+		partialFilms, _, err := u.client.Film.ExtractEnhancedFilmsWithPath(ctx, fmt.Sprintf("%s/%s/films/page/%v/", u.client.BaseURL, userID, i))
+		if err != nil {
+			log.WithFields(log.Fields{
+				"page": i,
+				"user": userID,
+			}).Warn("Failed to extract films")
+			return nil, nil, err
+		}
 		previews = append(previews, partialFilms...)
 	}
-	wg.Wait()
 
 	return previews, nil, nil
 }

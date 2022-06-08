@@ -26,13 +26,14 @@ type Film struct {
 }
 
 type FilmService interface {
-	GetExternalIDs(*context.Context, *Film) error
+	GetExternalIDs(context.Context, *Film) error
 	// GetFilmWithPath(*context.Context, string) (*Film, error)
-	EnhanceFilmList(*context.Context, *[]*Film) error
-	Filmography(*context.Context, *FilmographyOpt) ([]*Film, error)
-	Get(*context.Context, string) (*Film, error)
-	ExtractFilmsWithPath(*context.Context, string) ([]*Film, *Pagination, error)
-	ExtractEnhancedFilmsWithPath(*context.Context, string) ([]*Film, *Pagination, error)
+	EnhanceFilmList(context.Context, *[]*Film) error
+	Filmography(context.Context, *FilmographyOpt) ([]*Film, error)
+	Get(context.Context, string) (*Film, error)
+	ExtractFilmsWithPath(context.Context, string) ([]*Film, *Pagination, error)
+	ExtractEnhancedFilmsWithPath(context.Context, string) ([]*Film, *Pagination, error)
+	StreamBatch(context.Context, *FilmBatchOpts) (chan *Film, *Pagination, error)
 }
 
 type FilmServiceOp struct {
@@ -60,7 +61,51 @@ func (f *FilmographyOpt) Validate() error {
 	return nil
 }
 
-func (f *FilmServiceOp) ExtractFilmsWithPath(ctx *context.Context, path string) ([]*Film, *Pagination, error) {
+type FilmBatchOpts struct {
+	Watched   []string `json:"watched"`
+	Lists     []string `json:"lists"`
+	WatchList []string `json:"watchlist"`
+}
+
+// StreamBatch Get a bunch of different films at once and stream them back to the user
+func (f *FilmServiceOp) StreamBatch(ctx context.Context, batchOpts *FilmBatchOpts) (chan *Film, *Pagination, error) {
+	retC := make(chan *Film, 1)
+
+	var pagination *Pagination
+	// Simple wg to make sure 1 thread has finished and we have the pagination data
+	var wg sync.WaitGroup
+	wg.Add(1)
+	if len(batchOpts.Watched) > 0 {
+		go func() {
+			for _, username := range batchOpts.Watched {
+				log.WithFields(log.Fields{
+					"username": username,
+				}).Info("Fetching watche films")
+				var err error
+				var watched chan []*Film
+				watched, pagination, err = f.client.User.StreamWatched(ctx, username)
+				wg.Done()
+				if err != nil {
+					log.WithFields(log.Fields{
+						"username": username,
+					}).Warn("Issue looking up watched films")
+					return
+				}
+				log.Info("Got the channel, now cycle through em")
+				for filmB := range watched {
+					for _, film := range filmB {
+						retC <- film
+					}
+				}
+
+			}
+		}()
+	}
+	wg.Wait()
+	return retC, pagination, nil
+}
+
+func (f *FilmServiceOp) ExtractFilmsWithPath(ctx context.Context, path string) ([]*Film, *Pagination, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s", path), nil)
 	if err != nil {
 		return nil, nil, err
@@ -73,12 +118,13 @@ func (f *FilmServiceOp) ExtractFilmsWithPath(ctx *context.Context, path string) 
 	return films, &firstItems.Pagintion, nil
 }
 
-func (f *FilmServiceOp) ExtractEnhancedFilmsWithPath(ctx *context.Context, path string) ([]*Film, *Pagination, error) {
+func (f *FilmServiceOp) ExtractEnhancedFilmsWithPath(ctx context.Context, path string) ([]*Film, *Pagination, error) {
 	films, pagination, err := f.ExtractFilmsWithPath(ctx, path)
 	if err != nil {
 		return nil, pagination, err
 	}
 
+	log.Debug("Launching EnhanceFilmList")
 	err = f.client.Film.EnhanceFilmList(ctx, &films)
 	if err != nil {
 		return nil, nil, err
@@ -87,7 +133,7 @@ func (f *FilmServiceOp) ExtractEnhancedFilmsWithPath(ctx *context.Context, path 
 	return films, pagination, nil
 }
 
-func (f *FilmServiceOp) Get(ctx *context.Context, slug string) (*Film, error) {
+func (f *FilmServiceOp) Get(ctx context.Context, slug string) (*Film, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/film/%s", f.client.BaseURL, slug), nil)
 	if err != nil {
 		return nil, err
@@ -99,7 +145,7 @@ func (f *FilmServiceOp) Get(ctx *context.Context, slug string) (*Film, error) {
 	return item.Data.(*Film), nil
 }
 
-func (f *FilmServiceOp) Filmography(ctx *context.Context, opt *FilmographyOpt) ([]*Film, error) {
+func (f *FilmServiceOp) Filmography(ctx context.Context, opt *FilmographyOpt) ([]*Film, error) {
 	var films []*Film
 	err := opt.Validate()
 	if err != nil {
@@ -134,15 +180,15 @@ func (f *FilmServiceOp) Filmography(ctx *context.Context, opt *FilmographyOpt) (
 	return films, nil
 }
 
-func (f *FilmServiceOp) EnhanceFilmList(ctx *context.Context, films *[]*Film) error {
+func (f *FilmServiceOp) EnhanceFilmList(ctx context.Context, films *[]*Film) error {
 	var wg sync.WaitGroup
 	wg.Add(len(*films))
-	guard := make(chan struct{}, 10)
+	guard := make(chan struct{}, 5)
 	for _, film := range *films {
-		guard <- struct{}{}
 		go func(film *Film) {
 			defer wg.Done()
-
+			guard <- struct{}{}
+			log.Debugf("Looking up %v", film.Slug)
 			if err := f.GetExternalIDs(ctx, film); err != nil {
 				log.WithError(err).Warn("Failed to get external IDs")
 				// return err
@@ -154,7 +200,7 @@ func (f *FilmServiceOp) EnhanceFilmList(ctx *context.Context, films *[]*Film) er
 	return nil
 }
 
-func (f *FilmServiceOp) GetExternalIDs(ctx *context.Context, film *Film) error {
+func (f *FilmServiceOp) GetExternalIDs(ctx context.Context, film *Film) error {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s%s", f.client.BaseURL, film.Target), nil)
 	if err != nil {
 		return err
@@ -163,6 +209,7 @@ func (f *FilmServiceOp) GetExternalIDs(ctx *context.Context, film *Film) error {
 	if err != nil {
 		return err
 	}
+	defer res.Body.Close()
 	ids, err := ExtractFilmExternalIDs(res.Body)
 	if err != nil {
 		return err

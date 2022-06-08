@@ -6,10 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/apex/log"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -38,6 +39,8 @@ type Response struct {
 func NewScrapeClient(httpClient *http.Client) *ScrapeClient {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
+		// allows 60 requests every 10 seconds
+		// httpClient.Transport = NewThrottledTransport(1*time.Second, 60, http.DefaultTransport)
 	}
 
 	userAgent := "letterrestd"
@@ -57,6 +60,31 @@ type PageData struct {
 	Pagintion Pagination
 }
 
+type ThrottledTransport struct {
+	roundTripperWrap http.RoundTripper
+	ratelimiter      *rate.Limiter
+}
+
+func (c *ThrottledTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	err := c.ratelimiter.Wait(r.Context()) // This is a blocking call. Honors the rate limit
+	if err != nil {
+		return nil, err
+	}
+	return c.roundTripperWrap.RoundTrip(r)
+}
+
+// https://gist.github.com/zdebra/10f0e284c4672e99f0cb767298f20c11
+// NewThrottledTransport wraps transportWrap with a rate limitter
+// examle usage:
+// client := http.DefaultClient
+// client.Transport = NewThrottledTransport(10*time.Seconds, 60, http.DefaultTransport) allows 60 requests every 10 seconds
+func NewThrottledTransport(limitPeriod time.Duration, requestCount int, transportWrap http.RoundTripper) http.RoundTripper {
+	return &ThrottledTransport{
+		roundTripperWrap: transportWrap,
+		ratelimiter:      rate.NewLimiter(rate.Every(limitPeriod), requestCount),
+	}
+}
+
 func (c *ScrapeClient) sendRequest(req *http.Request, extractor func(io.Reader) (interface{}, *Pagination, error)) (*PageData, *Response, error) {
 	res, err := c.client.Do(req)
 	req.Close = true
@@ -70,8 +98,8 @@ func (c *ScrapeClient) sendRequest(req *http.Request, extractor func(io.Reader) 
 
 	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusBadRequest {
 		var errRes ErrorResponse
-		b, _ := ioutil.ReadAll(res.Body)
-		log.Debug(string(b))
+		// b, _ := ioutil.ReadAll(res.Body)
+		// log.Debug(string(b))
 		if err = json.NewDecoder(res.Body).Decode(&errRes); err == nil {
 			return nil, nil, errors.New(errRes.Message)
 		}

@@ -22,33 +22,50 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"log"
+	"context"
+	"fmt"
 
+	"github.com/apex/log"
+	"github.com/drewstinnett/letterrestd/letterboxd"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
-// scrapeCmd represents the scrape command
-var scrapeCmd = &cobra.Command{
-	Use:     "scrape",
-	Short:   "Use the scrape client to query letterboxd.com",
-	Args:    cobra.ExactArgs(1),
-	Aliases: []string{"scraper", "s"},
+// batchCmd represents the batch command
+var batchCmd = &cobra.Command{
+	Use:   "batch",
+	Short: "Do a batch scrape to get films from different places",
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Fatal("Use a subcommand (-h for those)")
+		userWatched, err := cmd.Flags().GetStringArray("user-watched")
+		cobra.CheckErr(err)
+		filmOpts := &letterboxd.FilmBatchOpts{
+			Watched: userWatched,
+		}
+		ctx := context.Background()
+		films, pagination, err := client.Film.StreamBatch(ctx, filmOpts)
+		cobra.CheckErr(err)
+		log.Infof("Paginage: %+v", pagination)
+		log.Debug("ABOUT TO JUMP IN TO FOR LOOP")
+		for i := 0; i < pagination.TotalItems; i++ {
+			film := <-films
+			d, err := yaml.Marshal(film)
+			cobra.CheckErr(err)
+			fmt.Println(string(d))
+		}
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(scrapeCmd)
+	scrapeCmd.AddCommand(batchCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// scrapeCmd.PersistentFlags().String("foo", "", "A help for foo")
-	scrapeCmd.PersistentFlags().Bool("stream", false, "Stream the output to stdout")
+	// batchCmd.PersistentFlags().String("foo", "", "A help for foo")
+	batchCmd.PersistentFlags().StringArray("user-watched", []string{}, "Watched films for a given user")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// scrapeCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// batchCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

@@ -15,6 +15,7 @@ type Pagination struct {
 	CurrentPage int  `json:"current_page"`
 	NextPage    int  `json:"next_page"`
 	TotalPages  int  `json:"total_pages"`
+	TotalItems  int  `json:"total_items"`
 	IsLast      bool `json:"is_last"`
 }
 
