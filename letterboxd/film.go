@@ -1,7 +1,10 @@
 package letterboxd
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,11 +25,14 @@ type Film struct {
 	Title       string           `json:"title"`
 	Slug        string           `json:"slug"`
 	Target      string           `json:"target"`
+	Genres      []string         `json:"genres,omitempty"`
+	Themes      []string         `json:"themes,omitempty"`
 	ExternalIDs *ExternalFilmIDs `json:"external_ids,omitempty"`
 }
 
 type FilmService interface {
-	GetExternalIDs(context.Context, *Film) error
+	// GetExternalIDs(context.Context, *Film) error
+	GetFilmDetailsWithPreview(context.Context, *Film) error
 	// GetFilmWithPath(*context.Context, string) (*Film, error)
 	EnhanceFilmList(context.Context, *[]*Film) error
 	Filmography(context.Context, *FilmographyOpt) ([]*Film, error)
@@ -288,7 +294,7 @@ func (f *FilmServiceOp) EnhanceFilmList(ctx context.Context, films *[]*Film) err
 			defer wg.Done()
 			guard <- struct{}{}
 			log.Debugf("Looking up %v", film.Slug)
-			if err := f.GetExternalIDs(ctx, film); err != nil {
+			if err := f.GetFilmDetailsWithPreview(ctx, film); err != nil {
 				log.WithError(err).Warn("Failed to get external IDs")
 				// return err
 			}
@@ -299,6 +305,38 @@ func (f *FilmServiceOp) EnhanceFilmList(ctx context.Context, films *[]*Film) err
 	return nil
 }
 
+func (f *FilmServiceOp) GetFilmDetailsWithPreview(ctx context.Context, film *Film) error {
+	b, err := f.client.getBody(fmt.Sprintf("%s%s", f.client.BaseURL, film.Target))
+	if err != nil {
+		return nil
+	}
+	film.ExternalIDs, err = ExtractFilmExternalIDs(bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	film.Genres, err = ExtractFilmGenres(bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+
+	return f.getFilmThemesWithPreview(ctx, film)
+}
+
+func (f *FilmServiceOp) getFilmThemesWithPreview(ctx context.Context, film *Film) error {
+	b, err := f.client.getBody(fmt.Sprintf("%s%s/themes", f.client.BaseURL, film.Target))
+	if err != nil {
+		return nil
+	}
+	film.Themes, err = ExtractFilmThemes(bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// TODO: This should probably be renamed to be get-whatever-from-film-FULL-page
+/*
 func (f *FilmServiceOp) GetExternalIDs(ctx context.Context, film *Film) error {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s%s", f.client.BaseURL, film.Target), nil)
 	if err != nil {
@@ -309,14 +347,22 @@ func (f *FilmServiceOp) GetExternalIDs(ctx context.Context, film *Film) error {
 		return err
 	}
 	defer res.Body.Close()
-	ids, err := ExtractFilmExternalIDs(res.Body)
+
+	// External IDs
+	film.ExternalIDs, err = ExtractFilmExternalIDs(res.Body)
 	if err != nil {
 		return err
 	}
-	film.ExternalIDs = ids
+
+	// Genres
+	film.Genres, err = ExtractFilmGenres(res.Body)
+	if err != nil {
+		return err
+	}
 	return nil
 	// return f.client.sendRequest(req, ExtractFilmExternalIDs)
 }
+*/
 
 func ExtractFilmExternalIDs(r io.Reader) (*ExternalFilmIDs, error) {
 	ids := &ExternalFilmIDs{}
@@ -334,6 +380,50 @@ func ExtractFilmExternalIDs(r io.Reader) (*ExternalFilmIDs, error) {
 	})
 
 	return ids, nil
+}
+
+func ExtractFilmThemes(r io.Reader) ([]string, error) {
+	themes := []string{}
+	doc, err := goquery.NewDocumentFromReader(r)
+	if err != nil {
+		return nil, err
+	}
+	doc.Find("section").Each(func(i int, s *goquery.Selection) {
+		if s.HasClass("section genre-group") {
+			s.Find("span").Each(func(i int, s *goquery.Selection) {
+				if s.Text() != "" {
+					themes = append(themes, s.Text())
+				}
+			})
+		}
+	})
+
+	return themes, nil
+}
+
+func ExtractFilmGenres(r io.Reader) ([]string, error) {
+	genres := []string{}
+	doc, err := goquery.NewDocumentFromReader(r)
+	if err != nil {
+		return nil, err
+	}
+	doc.Find("script").Each(func(i int, s *goquery.Selection) {
+		if val, ok := s.Attr("type"); ok && val == "application/ld+json" {
+			pieces := strings.Split(s.Text(), "\n")
+			if len(pieces) >= 3 {
+				var cdata CDATAFilm
+				err := json.Unmarshal([]byte(pieces[2]), &cdata)
+				if err != nil {
+					panic(err)
+				}
+				genres = cdata.Genre
+			}
+		}
+	})
+	if len(genres) == 0 {
+		return nil, errors.New("No genres found")
+	}
+	return genres, nil
 }
 
 func extractFilmFromFilmPage(r io.Reader) (interface{}, *Pagination, error) {

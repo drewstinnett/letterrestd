@@ -1,6 +1,7 @@
 package letterboxd
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -83,4 +84,9 @@ func TestListFilms(t *testing.T) {
 		require.NotNil(t, got)
 		require.Equal(t, tt.wantCount, len(got))
 	}
+}
+
+func TestGetOfficial(t *testing.T) {
+	client := NewScrapeClient(nil)
+	require.Greater(t, len(client.List.GetOfficial(context.Background())), 0)
 }

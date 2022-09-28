@@ -85,6 +85,22 @@ func NewThrottledTransport(limitPeriod time.Duration, requestCount int, transpor
 	}
 }
 
+func (c *ScrapeClient) getBody(url string) ([]byte, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	b, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
 func (c *ScrapeClient) sendRequest(req *http.Request, extractor func(io.Reader) (interface{}, *Pagination, error)) (*PageData, *Response, error) {
 	res, err := c.client.Do(req)
 	req.Close = true

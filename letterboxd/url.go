@@ -34,7 +34,7 @@ func (u *URLServiceOp) Items(ctx *context.Context, lurl string) (interface{}, er
 				"profession": profession,
 				"actor":      actor,
 			}).Debug("Detected filmography")
-			items, err := client.Film.Filmography(nil, &FilmographyOpt{
+			items, err := u.client.Film.Filmography(nil, &FilmographyOpt{
 				Profession: profession,
 				Person:     actor,
 			})
@@ -52,7 +52,7 @@ func (u *URLServiceOp) Items(ctx *context.Context, lurl string) (interface{}, er
 			"path": path,
 			"user": user,
 		}).Debug("Detected watchlist")
-		items, _, err := client.User.WatchList(nil, user)
+		items, _, err := u.client.User.WatchList(nil, user)
 		if err != nil {
 			return nil, err
 		}

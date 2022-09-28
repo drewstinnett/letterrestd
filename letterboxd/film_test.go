@@ -15,15 +15,34 @@ import (
 
 func TestExtractFilmExternalIDs(t *testing.T) {
 	f, err := os.Open("testdata/film/sweetback.html")
-	defer f.Close()
 	require.NoError(t, err)
+	defer f.Close()
 
 	ids, err := ExtractFilmExternalIDs(f)
 	require.NoError(t, err)
 	require.NotNil(t, ids)
 	require.Equal(t, "tt0067810", ids.IMDB)
 	require.Equal(t, "5822", ids.TMDB)
-	// films := items.([]Film)
+}
+
+func TestExtractFilmGenres(t *testing.T) {
+	f, err := os.Open("testdata/film/sweetback.html")
+	require.NoError(t, err)
+	defer f.Close()
+
+	got, err := ExtractFilmGenres(f)
+	require.NoError(t, err)
+	require.Equal(t, []string{"Crime", "Drama", "Action"}, got)
+}
+
+func TestExtractFilmThemes(t *testing.T) {
+	f, err := os.Open("testdata/film/themes.html")
+	require.NoError(t, err)
+	defer f.Close()
+
+	got, err := ExtractFilmThemes(f)
+	require.NoError(t, err)
+	require.Equal(t, []string{"Crude humor and satire", "Relationship comedy", "funny, comedy, humor, jokes or hilarious", "comedy, funny, hilarious, humor or jokes", "musical, songs, singing, comedy or funny", "comedy, horror, funny, humor or spooky", "action, villain, funny, humor or cool"}, got)
 }
 
 func TestExtractIDFromURL(t *testing.T) {
